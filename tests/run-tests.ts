@@ -261,6 +261,22 @@ try {
     assert.deepStrictEqual(mentionedGroupChatMemberIds("@群外员工 请回答", ["person-test-1"], people), []);
   });
 
+  test("recognizes @所有人 as every employee inside a group chat", () => {
+    const people = [
+      { id: "person-developer", name: "开发" },
+      { id: "person-tester", name: "测试" },
+      { id: "person-outside", name: "群外员工" },
+    ];
+    assert.deepStrictEqual(
+      mentionedGroupChatMemberIds("@所有人 请同步当前进度", ["person-developer", "person-tester"], people),
+      ["person-developer", "person-tester"],
+    );
+    assert.deepStrictEqual(
+      mentionedGroupChatMemberIds("@所有人员 暂不触发", ["person-developer", "person-tester"], people),
+      [],
+    );
+  });
+
   test("filters actual Agent tools by configured permissions", () => {
     const config = loadConfig();
     const tools = buildAgentTools([config.projects.go], ["inspect_repositories"]);

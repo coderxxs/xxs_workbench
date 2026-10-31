@@ -87,8 +87,9 @@ export function mentionedGroupChatMemberIds(
   people: Array<Pick<DevelopmentPerson, "id" | "name">>,
 ): string[] {
   const members = new Set(memberIds);
+  const mentionsEveryone = containsMention(text, "所有人");
   return people
-    .filter((person) => members.has(person.id) && containsMention(text, person.name))
+    .filter((person) => members.has(person.id) && (mentionsEveryone || containsMention(text, person.name)))
     .map((person) => person.id);
 }
 
