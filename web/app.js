@@ -900,15 +900,14 @@ function renderGroupChats() {
   const messages = document.getElementById("group-chat-messages");
   const form = document.getElementById("group-chat-form");
   if (!chat) {
-    header.innerHTML = '<div><span class="panel-kicker">GROUP CHAT</span><h3>选择一个群聊</h3><p>新建群聊后即可发送工作动态。</p></div>';
+    header.innerHTML = "<h3>选择群聊</h3>";
     messages.innerHTML = '<div class="empty-state">暂无群聊消息</div>';
     form.hidden = true;
     return;
   }
 
   const members = chat.memberIds.map((id) => state.people.find((person) => person.id === id)).filter(Boolean);
-  const participantNames = [state.currentUser.name, ...members.map((person) => person.name)];
-  header.innerHTML = `<div><span class="panel-kicker">GROUP CHAT</span><h3>${escapeHtml(chat.name)}</h3><p>${participantNames.map(escapeHtml).join("、")}</p></div><span class="badge neutral">${members.length + 1} 位成员</span>`;
+  header.innerHTML = `<h3>${escapeHtml(chat.name)}<span>（${members.length + 1}人）</span></h3>`;
   messages.innerHTML = chat.messages.length
     ? chat.messages.map((message) => `
         <article class="group-chat-message ${escapeAttr(message.activity)} ${escapeAttr(message.senderType || "person")}">
