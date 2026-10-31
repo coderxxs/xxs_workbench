@@ -267,24 +267,25 @@ async function askCommand(args: string[]): Promise<number> {
   const selectedId = providerId ?? config.defaultProvider;
   const provider = config.providers[selectedId];
   if (!provider) throw new Error(`Unknown provider: ${selectedId}`);
+  const modelId = model ?? provider.defaultModel;
 
   const runId = createRunId();
   audit(runId, "started", "model.ask", {
     provider: selectedId,
-    model: model ?? provider.defaultModel,
+    model: modelId,
     promptCharacters: prompt.length,
   });
   try {
     const answer = await chat(provider, {
       prompt,
-      model,
+      model: modelId,
       system: "You are a pragmatic software engineering assistant. Be concise, explicit about uncertainty, and never claim an action was executed when it was not.",
     });
     console.log(answer);
-    audit(runId, "completed", "model.ask", { provider: selectedId, outputCharacters: answer.length });
+    audit(runId, "completed", "model.ask", { provider: selectedId, model: modelId, outputCharacters: answer.length });
     return 0;
   } catch (error) {
-    audit(runId, "failed", "model.ask", { provider: selectedId, error: messageOf(error) });
+    audit(runId, "failed", "model.ask", { provider: selectedId, model: modelId, error: messageOf(error) });
     throw error;
   }
 }
@@ -309,13 +310,14 @@ async function taskCommand(args: string[]): Promise<number> {
   const selectedId = providerId ?? config.defaultProvider;
   const provider = config.providers[selectedId];
   if (!provider) throw new Error(`Unknown provider: ${selectedId}`);
+  const modelId = model ?? provider.defaultModel;
 
   const projectIds = projects.map((project) => project.id);
   const tools = buildAgentTools(projects);
   const runId = createRunId();
   audit(runId, "started", "agent.task", {
     provider: selectedId,
-    model: model ?? provider.defaultModel,
+    model: modelId,
     projects: projectIds,
     promptCharacters: prompt.length,
   });
@@ -323,7 +325,7 @@ async function taskCommand(args: string[]): Promise<number> {
   try {
     const answer = await runAgent(provider, {
       prompt,
-      model,
+      model: modelId,
       tools,
       system: [
         "You are a local developer workbench agent.",
@@ -341,10 +343,10 @@ async function taskCommand(args: string[]): Promise<number> {
         }),
     });
     console.log(answer);
-    audit(runId, "completed", "agent.task", { provider: selectedId, outputCharacters: answer.length });
+    audit(runId, "completed", "agent.task", { provider: selectedId, model: modelId, outputCharacters: answer.length });
     return 0;
   } catch (error) {
-    audit(runId, "failed", "agent.task", { provider: selectedId, error: messageOf(error) });
+    audit(runId, "failed", "agent.task", { provider: selectedId, model: modelId, error: messageOf(error) });
     throw error;
   }
 }

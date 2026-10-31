@@ -866,16 +866,17 @@ function renderActivity() {
 function renderRuns() {
   const body = document.getElementById("runs-table-body");
   if (!state.runs.length) {
-    body.innerHTML = '<tr><td colspan="5" class="empty-state">暂无运行记录</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" class="empty-state">暂无运行记录</td></tr>';
     return;
   }
   body.innerHTML = state.runs.map((run) => `
     <tr>
       <td><span class="run-status"><span class="status-dot ${run.event === "failed" ? "is-warn" : ""}"></span>${escapeHtml(run.event)}</span></td>
       <td>${escapeHtml(actionName(run.action))}</td>
+      <td>${runModelCell(run.details)}</td>
       <td><code>${escapeHtml(run.runId || "—")}</code></td>
       <td>${formatDateTime(run.timestamp)}</td>
-      <td class="detail-text" title="${escapeAttr(detailSummary(run.details))}">${escapeHtml(detailSummary(run.details))}</td>
+      <td class="detail-text" title="${escapeAttr(detailSummary(run.details, false))}">${escapeHtml(detailSummary(run.details, false))}</td>
     </tr>
   `).join("");
 }
@@ -2136,18 +2137,28 @@ function actionName(action) {
     "web.agent-task": "页面 Agent 任务",
     "web.workflow-plan": "生成研发计划",
     "web.workflow-tasks": "拆分研发任务",
+    "web.group-chat-reply": "群聊 Agent 回复",
+    "web.provider-model-select": "切换默认模型",
     "web.task-status": "更新看板任务状态",
   };
   return names[action] || action || "未知操作";
 }
 
-function detailSummary(details) {
+function runModelCell(details) {
+  const modelId = details?.model;
+  if (!modelId) return '<span class="run-model-empty">—</span>';
+  const provider = (state.overview?.providers || []).find((item) => item.id === details.provider);
+  const modelName = provider?.models?.find((item) => item.id === modelId)?.name || modelId;
+  return `<span class="run-model"><strong>${escapeHtml(modelName)}</strong><small>${escapeHtml(details.provider || "模型")}</small></span>`;
+}
+
+function detailSummary(details, includeModel = true) {
   if (!details || typeof details !== "object") return "—";
   const parts = [];
   if (details.projectId) parts.push(details.projectId);
   if (details.commandName) parts.push(details.commandName);
-  if (details.provider) parts.push(details.provider);
-  if (details.model) parts.push(details.model);
+  if (includeModel && details.provider) parts.push(details.provider);
+  if (includeModel && details.model) parts.push(details.model);
   if (typeof details.code === "number") parts.push(`exit ${details.code}`);
   if (details.error) parts.push(String(details.error));
   return parts.join(" · ") || "已记录";

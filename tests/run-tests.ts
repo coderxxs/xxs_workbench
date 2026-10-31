@@ -389,7 +389,7 @@ try {
   });
 
   test("stores application state and audit events in SQLite", () => {
-    audit("sqlite-test-run", "completed", "test.sqlite", { safe: true });
+    audit("sqlite-test-run", "completed", "test.sqlite", { safe: true, provider: "deepseek", model: "deepseek-flash" });
     const stats = databaseStats(agentHome);
     assert.strictEqual(fs.existsSync(databasePath(agentHome)), true);
     assert.strictEqual(configPath(), databasePath(agentHome));
@@ -399,7 +399,10 @@ try {
     assert.ok(stats.workflows >= 1);
     assert.ok(stats.audit_events >= 1);
     assert.ok(stats.provider_secrets >= 2);
-    assert.strictEqual(readAudit(1)[0].runId, "sqlite-test-run");
+    const latestAudit = readAudit(1)[0];
+    assert.strictEqual(latestAudit.runId, "sqlite-test-run");
+    assert.strictEqual(latestAudit.details.provider, "deepseek");
+    assert.strictEqual(latestAudit.details.model, "deepseek-flash");
   });
 
   console.log("All tests passed.");

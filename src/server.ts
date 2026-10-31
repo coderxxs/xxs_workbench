@@ -406,12 +406,14 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
     const provider = config.providers[providerId];
     if (!provider) throw new HttpError(404, `Unknown provider: ${providerId}`);
     if (!providerApiKey(provider.apiKeyEnv)) throw new HttpError(400, `Provider key is not configured: ${providerId}`);
+    const modelId = provider.defaultModel;
 
     const runId = createRunId();
-    audit(runId, "started", `web.workflow-${action}`, { workflowId: workflow.id, productId: product.id, provider: providerId });
+    audit(runId, "started", `web.workflow-${action}`, { workflowId: workflow.id, productId: product.id, provider: providerId, model: modelId });
     try {
       const output = await chat(provider, {
         prompt: action === "plan" ? workflowPlanPrompt(workflow, product, version) : workflowTasksPrompt(workflow, product, version),
+        model: modelId,
         system: action === "plan"
           ? "你是资深研发负责人。只输出可执行的研发计划，不编写代码，不虚构仓库事实。"
           : "你是资深技术项目经理。把已确认的计划拆成有顺序、可验证、可独立完成的任务清单，不编写代码。",
@@ -428,10 +430,10 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
         workflow.stage = "tasks";
       }
       saveWorkflow(workflow);
-      audit(runId, "completed", `web.workflow-${action}`, { workflowId: workflow.id, provider: providerId, outputCharacters: output.length });
+      audit(runId, "completed", `web.workflow-${action}`, { workflowId: workflow.id, provider: providerId, model: modelId, outputCharacters: output.length });
       sendJson(response, 200, { ok: true, runId, workflow });
     } catch (error) {
-      audit(runId, "failed", `web.workflow-${action}`, { workflowId: workflow.id, provider: providerId, error: messageOf(error) });
+      audit(runId, "failed", `web.workflow-${action}`, { workflowId: workflow.id, provider: providerId, model: modelId, error: messageOf(error) });
       throw error;
     }
     return;
@@ -590,6 +592,7 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
     const provider = config.providers[providerId];
     if (!provider) throw new HttpError(404, `Unknown provider: ${providerId}`);
     if (!providerApiKey(provider.apiKeyEnv)) throw new HttpError(400, `Provider key is not configured: ${providerId}`);
+    const modelId = typeof body.model === "string" && body.model.trim() ? body.model.trim() : provider.defaultModel;
     const productId = typeof body.productId === "string" && body.productId ? body.productId : undefined;
     const legacyProjectId = typeof body.projectId === "string" && body.projectId ? body.projectId : undefined;
     if (productId && !config.products[productId]) throw new HttpError(404, `Unknown product: ${productId}`);
@@ -612,6 +615,7 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
     const runId = createRunId();
     audit(runId, "started", "web.agent-task", {
       provider: providerId,
+      model: modelId,
       personId: profile?.person.id,
       agentId: profile?.agent.id,
       productId,
@@ -621,7 +625,7 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
     try {
       const answer = await runAgent(provider, {
         prompt,
-        model: typeof body.model === "string" ? body.model : undefined,
+        model: modelId,
         tools: buildAgentTools(projects, allowedTools),
         system: [
           "You are a local developer workbench agent.",
@@ -636,10 +640,10 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
         execute: (name, argumentsValue) =>
           executeAgentTool(config, projects, name, argumentsValue, { allowRisk: body.allowRisk === true, allowedTools }),
       });
-      audit(runId, "completed", "web.agent-task", { provider: providerId, agentId: profile?.agent.id, outputCharacters: answer.length });
+      audit(runId, "completed", "web.agent-task", { provider: providerId, model: modelId, agentId: profile?.agent.id, outputCharacters: answer.length });
       sendJson(response, 200, { ok: true, runId, answer });
     } catch (error) {
-      audit(runId, "failed", "web.agent-task", { provider: providerId, agentId: profile?.agent.id, error: messageOf(error) });
+      audit(runId, "failed", "web.agent-task", { provider: providerId, model: modelId, agentId: profile?.agent.id, error: messageOf(error) });
       throw error;
     }
     return;
@@ -664,11 +668,13 @@ async function replyToAdministratorInGroupChat(
     `${message.senderName}${message.senderType === "agent" ? "[Agent]" : message.senderType === "administrator" ? "[管理员]" : "[员工]"}：${message.text}`,
   ).join("\n");
   const runId = createRunId();
+  const modelId = provider.defaultModel;
   audit(runId, "started", "web.group-chat-reply", {
     groupChatId: groupChat.id,
     personId: responder.id,
     agentId: agent.id,
     provider: provider.id,
+    model: modelId,
   });
   try {
     const answer = await chat(provider, {
@@ -679,6 +685,7 @@ async function replyToAdministratorInGroupChat(
         `当前分配给你的任务：${assignedTasks.length ? assignedTasks.join("；") : "暂无"}`,
         "请直接回复管理员最后一条消息。",
       ].join("\n"),
+      model: modelId,
       system: [
         `你是员工“${responder.name}”配置的“${agent.name}”，角色是 ${agent.role}。`,
         `已配置 Skills：${skillInstruction(agent.skillIds)}`,
@@ -698,6 +705,7 @@ async function replyToAdministratorInGroupChat(
       personId: responder.id,
       agentId: agent.id,
       provider: provider.id,
+      model: modelId,
       outputCharacters: answer.length,
     });
     return updated;
@@ -707,6 +715,7 @@ async function replyToAdministratorInGroupChat(
       personId: responder.id,
       agentId: agent.id,
       provider: provider.id,
+      model: modelId,
       error: messageOf(error),
     });
     throw error;
