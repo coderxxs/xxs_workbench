@@ -115,7 +115,16 @@
 
           <section class="view" data-view="projects">
             <div class="config-section is-active" data-config-panel="people">
-              <div class="config-toolbar single-action"><button class="secondary-button" id="add-person">＋ 新建人员</button></div>
+              <div class="config-toolbar people-toolbar">
+                <div class="people-view-controls">
+                  <span class="people-status-summary" id="people-status-summary">0 忙碌 · 0 空闲</span>
+                  <div class="people-view-switch" aria-label="人员视图">
+                    <button type="button" data-people-view="workstation" aria-pressed="true">工位模式</button>
+                    <button type="button" data-people-view="cards" aria-pressed="false">卡片模式</button>
+                  </div>
+                </div>
+                <button class="secondary-button" id="add-person">＋ 新建人员</button>
+              </div>
               <section class="panel people-panel">
                 <div class="people-grid" id="people-grid"><div class="empty-state">尚未创建人员。</div></div>
               </section>

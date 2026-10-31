@@ -21,6 +21,7 @@ const state = {
   directoryListing: null,
   activeView: "overview",
   activeConfigSection: "people",
+  peopleViewMode: "workstation",
 };
 
 let confirmationResolver = null;
@@ -240,6 +241,12 @@ function bindActions() {
   });
   document.getElementById("add-product").addEventListener("click", () => openProductModal());
   document.getElementById("add-person").addEventListener("click", openPersonModal);
+  document.querySelector(".people-view-switch").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-people-view]");
+    if (!button) return;
+    state.peopleViewMode = button.dataset.peopleView;
+    renderPeople();
+  });
   document.getElementById("person-form").addEventListener("submit", createDevelopmentPerson);
   document.getElementById("person-modal-close").addEventListener("click", closePersonModal);
   document.getElementById("person-modal-cancel").addEventListener("click", closePersonModal);
@@ -445,11 +452,28 @@ function renderProjectCards() {
 function renderPeople() {
   const target = document.getElementById("people-grid");
   document.getElementById("nav-person-count").textContent = String(state.people.length);
+  const workstationInfo = state.people.map((person) => personWorkstationInfo(person));
+  const busyCount = workstationInfo.filter((item) => item.isBusy).length;
+  document.getElementById("people-status-summary").textContent = `${busyCount} 忙碌 · ${state.people.length - busyCount} 空闲`;
+  document.querySelectorAll("[data-people-view]").forEach((button) => {
+    const active = button.dataset.peopleView === state.peopleViewMode;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  target.classList.toggle("is-workstation", state.peopleViewMode === "workstation");
+  if (state.peopleViewMode === "workstation") {
+    target.innerHTML = renderWorkstationZones(workstationInfo);
+    return;
+  }
   if (!state.people.length) {
     target.innerHTML = '<div class="empty-state">尚未创建人员。先定义责任人，再为其配置具有不同能力的 Agent。</div>';
     return;
   }
-  target.innerHTML = state.people.map((person) => `
+  target.innerHTML = state.people.map(renderPersonCard).join("");
+}
+
+function renderPersonCard(person) {
+  return `
     <article class="person-card">
       <header class="person-card-header">
         <div class="person-identity"><span class="person-avatar">${escapeHtml(person.name.slice(0, 1).toUpperCase())}</span><div><strong>${escapeHtml(person.name)}</strong><small>${person.roles.map(assigneeRoleLabel).map(escapeHtml).join(" · ")}</small></div></div>
@@ -458,8 +482,75 @@ function renderPeople() {
       <div class="person-agent-list">
         ${person.agents[0] ? renderPersonAgent(person.agents[0]) : '<div class="person-agent-empty">尚未配置 Agent</div>'}
       </div>
-    </article>
-  `).join("");
+    </article>`;
+}
+
+function personWorkstationInfo(person) {
+  const assigned = state.workflows.flatMap((workflow) => (workflow.taskItems || [])
+    .filter((task) => task.ownerId === person.id)
+    .map((task) => ({ workflow, task })));
+  const active = assigned.filter(({ task }) => normalizedTaskStatus(task.status) === "in_progress");
+  return { isBusy: active.length > 0, active, assigned };
+}
+
+function personWorkstationZone(person) {
+  const role = person.roles.find((item) => ["developer", "tester", "deployer", "releaser"].includes(item));
+  if (role === "tester") return "testing";
+  if (role === "deployer" || role === "releaser") return "operations";
+  return "development";
+}
+
+function renderWorkstationZones(workstationInfo) {
+  const people = state.people.map((person, index) => ({ person, info: workstationInfo[index] }));
+  const zones = [
+    { id: "development", title: "研发区", icon: "</>", description: "需求分析、编码实现与代码审查" },
+    { id: "testing", title: "测试区", icon: "✓", description: "测试设计、执行与故障验证" },
+    { id: "operations", title: "运维区", icon: "⌁", description: "部署、发布与运行保障" },
+  ];
+  return zones.map((zone) => {
+    const members = people.filter(({ person }) => personWorkstationZone(person) === zone.id);
+    const busyCount = members.filter(({ info }) => info.isBusy).length;
+    const workstations = members.length
+      ? members.map(({ person, info }, index) => renderPersonWorkstation(person, info, `${zone.title.slice(0, 1)}-${String(index + 1).padStart(2, "0")}`)).join("")
+      : `<div class="workstation-zone-empty">${escapeHtml(zone.title)}暂无人员</div>`;
+    return `
+      <section class="workstation-zone workstation-zone-${zone.id}">
+        <header class="workstation-zone-header">
+          <div class="workstation-zone-identity"><span class="workstation-zone-icon">${escapeHtml(zone.icon)}</span><div><strong>${escapeHtml(zone.title)}</strong><small>${escapeHtml(zone.description)}</small></div></div>
+          <span class="workstation-zone-summary">${members.length} 人 · ${busyCount} 忙碌 · ${members.length - busyCount} 空闲</span>
+        </header>
+        <div class="workstation-zone-grid">${workstations}</div>
+      </section>`;
+  }).join("");
+}
+
+function renderPersonWorkstation(person, info, slotLabel) {
+  const agent = person.agents[0];
+  const focus = info.active[0];
+  const statusLabel = info.isBusy ? "忙碌" : "空闲";
+  const statusDetail = focus
+    ? `${focus.task.title}${info.active.length > 1 ? ` 等 ${info.active.length} 项` : ""}`
+    : info.assigned.length ? `等待处理 ${info.assigned.length} 项任务` : "等待新任务";
+  const agentAction = agent
+    ? `<button type="button" data-edit-person-agent="${escapeAttr(agent.id)}" data-person-id="${escapeAttr(person.id)}">编辑 Agent</button>`
+    : `<button type="button" data-add-person-agent="${escapeAttr(person.id)}">配置 Agent</button>`;
+  return `
+    <article class="workstation-card ${info.isBusy ? "is-busy" : "is-idle"}">
+      <header class="workstation-card-header">
+        <div><strong>${escapeHtml(person.name)}</strong><small>${person.roles.map(assigneeRoleLabel).map(escapeHtml).join(" · ")}</small></div>
+        <div class="workstation-card-state"><span class="workstation-slot">${escapeHtml(slotLabel)}</span><span class="workstation-status"><i></i>${statusLabel}</span></div>
+      </header>
+      <div class="workstation-scene" role="img" aria-label="${escapeAttr(`${person.name}当前${statusLabel}，${info.isBusy ? "正在工位敲击键盘" : "趴在工位休息"}`)}"></div>
+      <div class="workstation-info">
+        <div class="workstation-task"><span>${info.isBusy ? "正在处理" : "当前状态"}</span><strong title="${escapeAttr(statusDetail)}">${escapeHtml(statusDetail)}</strong></div>
+        <div class="workstation-agent"><span class="person-agent-mark">✦</span><div><strong>${escapeHtml(agent?.name || "尚未配置 Agent")}</strong><small>${agent ? `${escapeHtml(agent.providerId)} · ${agent.toolIds.length} Tools` : "配置后即可参与协作"}</small></div></div>
+      </div>
+      <footer class="workstation-actions">
+        <button type="button" data-edit-person="${escapeAttr(person.id)}">编辑人员</button>
+        ${agentAction}
+        <button type="button" class="danger" data-delete-person="${escapeAttr(person.id)}" aria-label="删除 ${escapeAttr(person.name)}">删除</button>
+      </footer>
+    </article>`;
 }
 
 function renderPersonAgent(agent) {
@@ -638,6 +729,7 @@ async function updateKanbanTaskStatus(workflowId, taskId, status, control) {
     state.workflows = state.workflows.map((item) => item.id === workflowId ? result.workflow : item);
     renderWorkflows();
     renderKanban();
+    renderPeople();
     renderGroupChats();
     showToast(`任务已移至“${taskStatusLabel(status)}”`);
   } catch (error) {
@@ -924,10 +1016,10 @@ function renderGroupChats() {
   header.innerHTML = `<h3>${escapeHtml(chat.name)}<span>（${members.length + 1}人）</span></h3>`;
   messages.innerHTML = chat.messages.length
     ? chat.messages.map((message) => `
-        <article class="group-chat-message ${escapeAttr(message.activity)} ${escapeAttr(message.senderType || "person")}">
+        <article class="group-chat-message ${escapeAttr(message.activity)} ${escapeAttr(message.senderType || "person")} ${message.clientPending ? "is-pending" : ""}">
           <span class="group-chat-avatar">${escapeHtml(message.senderName.slice(0, 1))}</span>
           <div class="group-chat-message-body">
-            <header><strong>${escapeHtml(message.senderName)}</strong><span class="group-chat-actor ${escapeAttr(message.senderType || "person")}">${escapeHtml(groupChatSenderLabel(message.senderType))}</span>${message.activity === "message" ? "" : `<span class="group-chat-activity ${escapeAttr(message.activity)}">${escapeHtml(groupChatActivityLabel(message.activity))}</span>`}<time>${escapeHtml(formatRelative(message.createdAt))}</time></header>
+            <header><strong>${escapeHtml(message.senderName)}</strong><span class="group-chat-actor ${escapeAttr(message.senderType || "person")}">${escapeHtml(groupChatSenderLabel(message.senderType))}</span>${message.activity === "message" ? "" : `<span class="group-chat-activity ${escapeAttr(message.activity)}">${escapeHtml(groupChatActivityLabel(message.activity))}</span>`}<time>${message.clientPending ? "发送中…" : escapeHtml(formatRelative(message.createdAt))}</time></header>
             ${message.taskTitle ? `<div class="group-chat-task-context"><span>${escapeHtml(message.workflowTitle || "研发任务")}</span><strong>${escapeHtml(message.taskId)} · ${escapeHtml(message.taskTitle)}</strong></div>` : ""}
             <p>${escapeHtml(message.text)}</p>
           </div>
@@ -1043,10 +1135,12 @@ async function sendGroupChatMessage(event) {
   event.preventDefault();
   const chat = state.groupChats.find((item) => item.id === state.activeGroupChatId);
   if (!chat) return;
+  const senderPersonId = document.getElementById("group-chat-sender").value;
   const activity = document.getElementById("group-chat-activity").value;
   const taskValue = document.getElementById("group-chat-task").value;
   const [workflowId, taskId] = taskValue ? taskValue.split("::") : ["", ""];
-  const text = document.getElementById("group-chat-message").value.trim();
+  const messageInput = document.getElementById("group-chat-message");
+  const text = messageInput.value.trim();
   if ((activity === "started" || activity === "completed") && !taskId) {
     showToast("开始或完成工作时必须选择已分配任务", true);
     return;
@@ -1058,12 +1152,39 @@ async function sendGroupChatMessage(event) {
   const button = document.getElementById("group-chat-send");
   button.disabled = true;
   button.textContent = "发送中…";
+  const workflow = state.workflows.find((item) => item.id === workflowId);
+  const task = workflow?.taskItems?.find((item) => item.id === taskId);
+  const sender = senderPersonId === state.currentUser.id
+    ? state.currentUser
+    : state.people.find((person) => person.id === senderPersonId);
+  const defaultText = task
+    ? activity === "started" ? `开始处理：${task.title}`
+      : activity === "completed" ? `已完成：${task.title}`
+        : activity === "confirmation" ? `需要确认：${task.title}` : ""
+    : "";
+  const pendingMessageId = `pending-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  chat.messages.push({
+    id: pendingMessageId,
+    senderPersonId,
+    senderName: sender?.name || "未知成员",
+    senderType: senderPersonId === state.currentUser.id ? "administrator" : "person",
+    activity,
+    text: text || defaultText,
+    workflowId: workflow?.id,
+    workflowTitle: workflow?.title,
+    taskId: task?.id,
+    taskTitle: task?.title,
+    createdAt: new Date().toISOString(),
+    clientPending: true,
+  });
+  messageInput.value = "";
+  renderGroupChats();
   try {
     const result = await api("/api/group-chats/messages", {
       method: "POST",
       body: JSON.stringify({
         groupChatId: chat.id,
-        senderPersonId: document.getElementById("group-chat-sender").value,
+        senderPersonId,
         activity,
         text,
         workflowId: workflowId || undefined,
@@ -1072,13 +1193,18 @@ async function sendGroupChatMessage(event) {
     });
     state.groupChats = state.groupChats.map((item) => item.id === result.groupChat.id ? result.groupChat : item);
     if (result.workflow) state.workflows = state.workflows.map((item) => item.id === result.workflow.id ? result.workflow : item);
-    document.getElementById("group-chat-message").value = "";
     renderGroupChats();
     renderWorkflows();
     renderKanban();
+    renderPeople();
     if (result.replyErrors?.length) showToast(`消息已发送；${result.replyErrors.map((item) => `${item.personName}：${item.error}`).join("；")}`, true);
     else showToast(result.repliedBy?.length ? `${result.repliedBy.join("、")} 的 Agent 已回答` : "群聊消息已发送");
   } catch (error) {
+    state.groupChats = state.groupChats.map((item) => item.id === chat.id
+      ? { ...item, messages: item.messages.filter((message) => message.id !== pendingMessageId) }
+      : item);
+    renderGroupChats();
+    if (state.activeGroupChatId === chat.id && !messageInput.value.trim()) messageInput.value = text;
     showToast(error.message, true);
   } finally {
     button.disabled = false;
@@ -1512,6 +1638,7 @@ async function assignWorkflowTask(workflowId, taskId, ownerId, agentId, select) 
     state.workflows = state.workflows.map((workflow) => workflow.id === workflowId ? result.workflow : workflow);
     renderWorkflows();
     renderKanban();
+    renderPeople();
     showToast(ownerId ? (agentId ? "负责人和执行 Agent 已更新" : "任务负责人已更新") : "已取消任务分配");
   } catch (error) {
     select.disabled = false;
@@ -1626,6 +1753,7 @@ async function refreshWorkflows() {
   state.workflows = payload.workflows || [];
   renderWorkflows();
   renderKanban();
+  renderPeople();
   document.getElementById("nav-workflow-count").textContent = String(state.milestones.length);
 }
 
@@ -1642,6 +1770,7 @@ async function generateWorkflowContent(workflowId, action, button) {
     state.workflows = state.workflows.map((item) => item.id === workflowId ? result.workflow : item);
     renderWorkflows();
     renderKanban();
+    renderPeople();
     showToast(action === "plan" ? "计划已生成" : "任务已拆分");
   } catch (error) {
     button.disabled = false;
@@ -1660,6 +1789,7 @@ async function advanceWorkflowStage(workflowId, stage, button) {
     state.workflows = state.workflows.map((item) => item.id === workflowId ? result.workflow : item);
     renderWorkflows();
     renderKanban();
+    renderPeople();
     if (stage === "coding") openWorkflowInAgent(workflowId, "coding");
     else showToast(`工作流已进入${workflowStageLabel(stage)}阶段`);
   } catch (error) {
