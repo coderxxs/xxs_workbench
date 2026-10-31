@@ -49,6 +49,7 @@ try {
     assert.ok(config.providers.openai);
     assert.ok(config.providers.deepseek);
     assert.ok(config.providers.kimi);
+    assert.strictEqual(config.defaultProvider, "deepseek");
     assert.deepStrictEqual(config.products, {});
   });
 

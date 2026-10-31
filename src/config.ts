@@ -67,7 +67,7 @@ export function defaultConfig(): AgentConfig {
 
   return {
     version: 1,
-    defaultProvider: "openai",
+    defaultProvider: "deepseek",
     providers,
     products: {},
     projects: {},
