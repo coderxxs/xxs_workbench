@@ -68,7 +68,7 @@ npm run package:linux
 
 代码仓库从配置中心维护：进入“配置 → 配置产品”，选择本地仓库目录并点击“添加并关联”。同一个本地仓库可被多个产品关联，底层会按仓库 ID 去重。
 
-配置中心分为“人员配置”和“产品配置”两个二级菜单。人员支持新建、编辑和受保护删除；如果人员或名下 Agent 仍被研发任务引用，删除会被拒绝。任务始终由已配置角色匹配 Agent 的人员负责，可以选择该 Agent 执行。Skills 只描述工作方法，Tools 决定可调用的本地能力，仓库和环境范围限制作用域；服务端会再次校验这些权限。通用 Agent 预设均包含“群聊协作”Skill，已有 Agent 会在服务启动时自动补齐该 Skill。管理员在群聊中输入 `@员工名` 后，系统会使用该员工 Agent 的 Provider 和群聊上下文生成回答；输入 `@所有人` 会依次请求群内全部员工 Agent 回答；未配置 Agent 的员工只能查看消息，不会自动回答。产品配置、人员与 Agent、研发流程、群聊消息和运行审计统一保存在 `.dev-agent/dev-work-agent.sqlite`。
+配置中心位于左侧菜单最后，分为“人员配置”“产品配置”和“模型配置”三个二级菜单。人员支持新建、编辑和受保护删除；如果人员或名下 Agent 仍被研发任务引用，删除会被拒绝。任务始终由已配置角色匹配 Agent 的人员负责，可以选择该 Agent 执行。Skills 只描述工作方法，Tools 决定可调用的本地能力，仓库和环境范围限制作用域；服务端会再次校验这些权限。通用 Agent 预设均包含“群聊协作”Skill，已有 Agent 会在服务启动时自动补齐该 Skill。管理员在群聊中输入 `@员工名` 后，系统会使用该员工 Agent 的 Provider 和群聊上下文生成回答；输入 `@所有人` 会依次请求群内全部员工 Agent 回答；未配置 Agent 的员工只能查看消息，不会自动回答。产品配置、人员与 Agent、研发流程、群聊消息和运行审计统一保存在 `.dev-agent/dev-work-agent.sqlite`。
 
 首次启动 SQLite 版本时，会自动把现有的 `config.json`、`people.json`、`milestones.json`、`workflows.json`、`group-chats.json` 和 `runs.jsonl` 导入数据库。导入标记写入数据库，迁移只执行一次；原文件不会删除，可作为迁移前备份。
 
@@ -84,7 +84,7 @@ node dist/src/cli.js task "检查 demo 的 Git 状态并运行测试" --project 
 
 ## 配置 API Key
 
-进入“设置 → 模型 Provider 与 API Key”，可为每个 Provider 选择默认模型，也可直接保存、更换或清除 Key。默认使用 GPT-5.6 Sol、DeepSeek V4.1 Flash 和 Kimi K3.1 Pro；选择结果与 Key 均保存在 `.dev-agent/dev-work-agent.sqlite`。页面不会读取或回显旧 Key，显式环境变量的优先级高于数据库值。
+进入“配置 → 模型配置”，可为每个 Provider 选择默认模型，也可直接保存、更换或清除 Key。默认使用 GPT-5.6 Sol、DeepSeek V4.1 Flash 和 Kimi K3.1 Pro；选择结果与 Key 均保存在 `.dev-agent/dev-work-agent.sqlite`。页面不会读取或回显旧 Key，显式环境变量的优先级高于数据库值。
 
 可用下面的命令检查配置状态，它不会显示 Key：
 

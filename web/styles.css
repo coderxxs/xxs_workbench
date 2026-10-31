@@ -198,15 +198,17 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .signal-b { right: 10%; top: 42%; }
 .signal-c { bottom: 21px; left: 28%; }
 
-.metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 15px; margin: 20px 0; }
-.metric-card { min-height: 118px; padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); }
+.overview-cockpit { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(320px, .75fr); grid-template-rows: auto minmax(0, 1fr); gap: 16px; min-height: 0; }
+.overview-side { display: grid; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; min-height: 0; }
+.metric-grid { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 0; }
+.metric-card { min-height: 98px; padding: 15px 17px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); }
 .metric-top { display: flex; justify-content: space-between; align-items: flex-start; }
 .metric-label { color: var(--muted); font-size: 12px; font-weight: 650; }
-.metric-icon { display: grid; place-items: center; width: 34px; height: 34px; color: var(--accent); background: #f0eefe; border-radius: 10px; font-size: 17px; }
+.metric-icon { display: grid; place-items: center; width: 30px; height: 30px; color: var(--accent); background: #f0eefe; border-radius: 9px; font-size: 15px; }
 .metric-icon.mint { color: #188970; background: #e8f7f3; }
 .metric-icon.blue { color: #2e68be; background: #eaf1fc; }
 .metric-icon.amber { color: #aa7018; background: #fbf2e3; }
-.metric-value { margin: 12px 0 0; font-size: 28px; font-weight: 780; letter-spacing: -.04em; }
+.metric-value { margin: 7px 0 0; font-size: 24px; font-weight: 780; letter-spacing: -.04em; }
 .metric-note { margin-top: 3px; color: #89929d; font-size: 10px; }
 .skeleton-card { background: linear-gradient(90deg, #fff 20%, #f5f6f8 50%, #fff 80%); background-size: 300% 100%; animation: shimmer 1.3s infinite; }
 @keyframes shimmer { to { background-position: -150% 0; } }
@@ -257,6 +259,16 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .activity-copy strong { font-size: 12px; }
 .activity-copy small { margin-top: 3px; color: #949ca6; font-size: 10px; }
 .activity-time { color: #8b949e; font-size: 10px; white-space: nowrap; }
+.overview-products-panel, .overview-stack-panel { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; overflow: hidden; }
+.overview-products-panel .product-summary-list, .overview-stack-panel :is(.environment-list, .activity-list) { min-height: 0; overflow-y: auto; }
+.overview-cockpit .panel-header { padding: 14px 17px 10px; }
+.overview-cockpit .product-summary-list { padding: 0 17px 12px; }
+.overview-cockpit .product-summary-row { gap: 13px; padding: 12px 0; }
+.overview-cockpit .environment-list, .overview-cockpit .activity-list { padding: 0 16px 10px; }
+.overview-cockpit .environment-item { padding: 9px 1px; }
+.overview-cockpit .activity-item { grid-template-columns: 28px minmax(0,1fr) auto; gap: 9px; padding: 9px 0; }
+.overview-cockpit .activity-item .badge { display: none; }
+.overview-cockpit .activity-time { grid-column: 2; }
 
 .view-intro { margin-bottom: 20px; display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
 .intro-actions { display: flex; gap: 9px; }
@@ -480,6 +492,12 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .group-chat-message.agent .group-chat-avatar { color: #08745f; background: #dff7f0; }
 
 @media (min-width: 861px) {
+  body.overview-active { height: 100vh; overflow: hidden; }
+  body.overview-active .app-shell { height: 100vh; min-height: 0; }
+  body.overview-active .main-content { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100vh; min-height: 0; overflow: hidden; }
+  body.overview-active .content-area { min-height: 0; padding-bottom: 28px; overflow: hidden; }
+  body.overview-active .view[data-view="overview"].is-active { display: block; height: 100%; min-height: 0; }
+  body.overview-active .overview-cockpit { height: 100%; }
   body.group-chat-active { height: 100vh; overflow: hidden; }
   body.group-chat-active .app-shell { height: 100vh; min-height: 0; }
   body.group-chat-active .main-content { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100vh; min-height: 0; overflow: hidden; }
@@ -491,6 +509,50 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
   body.group-chat-active .group-chat-room { height: 100%; min-height: 0; grid-template-rows: auto minmax(0, 1fr) auto; }
   body.group-chat-active .group-chat-messages { min-height: 0; max-height: none; }
   body.group-chat-active .group-chat-composer { max-height: 38vh; overflow-y: auto; }
+}
+
+@media (min-width: 1920px) {
+  .overview-cockpit { width: 100%; max-width: 2200px; margin: 0 auto; gap: 18px; }
+  .overview-side { gap: 18px; }
+  .overview-cockpit .panel-header { padding: 17px 20px 12px; }
+  .overview-cockpit .product-summary-list { padding-inline: 20px; }
+  .overview-cockpit .environment-list, .overview-cockpit .activity-list { padding-inline: 19px; }
+}
+
+@media (min-width: 2560px) {
+  :root {
+    --type-caption: 14px;
+    --type-small: 15.5px;
+    --type-body: 17.5px;
+    --type-page-title: 34px;
+  }
+  .overview-cockpit { max-width: 2400px; gap: 22px; }
+  .overview-side { gap: 22px; }
+  .metric-grid { gap: 18px; }
+  .metric-card { min-height: 112px; padding: 18px 20px; }
+  .metric-value { margin-top: 10px; font-size: 28px; }
+  .overview-cockpit .product-summary-row { padding-block: 15px; }
+  .overview-cockpit .environment-item, .overview-cockpit .activity-item { padding-block: 12px; }
+}
+
+@media (min-width: 3000px) {
+  :root {
+    --type-caption: 15px;
+    --type-small: 16.5px;
+    --type-body: 18px;
+    --type-page-title: 36px;
+  }
+  .app-shell { grid-template-columns: 320px minmax(0, 1fr); }
+  .sidebar { padding: 34px 22px 24px; }
+  .overview-cockpit { max-width: 2600px; gap: 24px; }
+  .overview-side { gap: 24px; }
+  .metric-card { min-height: 124px; padding: 21px 23px; }
+  .metric-icon { width: 36px; height: 36px; }
+  .metric-value { font-size: 32px; }
+  .overview-cockpit .panel-header { padding: 20px 23px 14px; }
+  .overview-cockpit .product-summary-list,
+  .overview-cockpit .environment-list,
+  .overview-cockpit .activity-list { padding-inline: 23px; }
 }
 
 .agent-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; min-height: calc(100vh - 170px); }
@@ -1132,6 +1194,8 @@ html[data-theme="dark"] .signal { background: #1c2735; border-color: #46566a; }
   .welcome-panel { grid-template-columns: 1fr; }
   .welcome-visual { display: none; }
   .dashboard-grid, .settings-grid, .agent-layout, .group-chat-layout { grid-template-columns: 1fr; }
+  .overview-cockpit { grid-template-columns: 1fr; }
+  .overview-side { grid-template-rows: auto auto; }
   .kanban-toolbar { align-items: stretch; flex-direction: column; }
   .kanban-filters { display: grid; grid-template-columns: 1fr 1fr; }
   .kanban-filters select { min-width: 0; }

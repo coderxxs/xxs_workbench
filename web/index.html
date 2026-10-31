@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="/styles.css" />
     <script src="/theme-init.js"></script>
   </head>
-  <body>
+  <body class="overview-active">
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
@@ -32,24 +32,22 @@
           <button class="nav-item" data-view-target="group-chat">
             <span class="nav-icon">◎</span><span>群聊</span><span class="nav-count" id="nav-group-chat-count">0</span>
           </button>
-          <div class="nav-group" data-nav-group="projects">
-            <button class="nav-item" data-view-target="projects" data-config-target="people">
-              <span class="nav-icon">◇</span><span>配置</span><span class="nav-count" id="nav-project-count">0</span>
-            </button>
-            <div class="nav-submenu" aria-label="配置二级菜单">
-              <button class="nav-subitem is-active" data-view-target="projects" data-config-target="people"><span>人员配置</span><b id="nav-person-count">0</b></button>
-              <button class="nav-subitem" data-view-target="projects" data-config-target="products"><span>产品配置</span><b id="nav-product-count">0</b></button>
-            </div>
-          </div>
           <button class="nav-item" data-view-target="agent">
             <span class="nav-icon">✦</span><span>Agent控制台</span>
           </button>
           <button class="nav-item" data-view-target="runs">
             <span class="nav-icon">↻</span><span>运行记录</span>
           </button>
-          <button class="nav-item" data-view-target="settings">
-            <span class="nav-icon">⚙</span><span>设置</span>
-          </button>
+          <div class="nav-group" data-nav-group="projects">
+            <button class="nav-item" data-view-target="projects" data-config-target="people">
+              <span class="nav-icon">◇</span><span>配置</span><span class="nav-count" id="nav-project-count">3</span>
+            </button>
+            <div class="nav-submenu" aria-label="配置二级菜单">
+              <button class="nav-subitem is-active" data-view-target="projects" data-config-target="people"><span>人员配置</span><b id="nav-person-count">0</b></button>
+              <button class="nav-subitem" data-view-target="projects" data-config-target="products"><span>产品配置</span><b id="nav-product-count">0</b></button>
+              <button class="nav-subitem" data-view-target="projects" data-config-target="models"><span>模型配置</span><b id="nav-provider-count">0</b></button>
+            </div>
+          </div>
         </nav>
 
         <div class="sidebar-footer">
@@ -79,35 +77,15 @@
 
         <div class="content-area">
           <section class="view is-active" data-view="overview">
-            <div class="welcome-panel">
-              <div class="welcome-copy">
-                <span class="section-kicker">小小生开发工作台 · V1.0.0.0</span>
-                <h2>从产品到环境与代码，一屏掌握全局。</h2>
-                <p>按产品聚合环境和代码仓库，用部署矩阵连接两者，清晰掌握分支、工作区与发布状态。</p>
-                <div class="welcome-actions">
-                  <button class="light-button" data-view-target="agent">交给 Agent <span>→</span></button>
-                  <button class="ghost-button" data-view-target="projects" data-config-target="products">查看所有产品</button>
-                </div>
+            <div class="overview-cockpit">
+              <div class="metric-grid" id="metric-grid">
+                <article class="metric-card skeleton-card"></article>
+                <article class="metric-card skeleton-card"></article>
+                <article class="metric-card skeleton-card"></article>
+                <article class="metric-card skeleton-card"></article>
               </div>
-              <div class="welcome-visual" aria-hidden="true">
-                <div class="orbit orbit-one"></div>
-                <div class="orbit orbit-two"></div>
-                <div class="core-mark"><span>DW</span></div>
-                <div class="signal signal-a">Git</div>
-                <div class="signal signal-b">CI</div>
-                <div class="signal signal-c">AI</div>
-              </div>
-            </div>
 
-            <div class="metric-grid" id="metric-grid">
-              <article class="metric-card skeleton-card"></article>
-              <article class="metric-card skeleton-card"></article>
-              <article class="metric-card skeleton-card"></article>
-              <article class="metric-card skeleton-card"></article>
-            </div>
-
-            <div class="dashboard-grid">
-              <section class="panel panel-wide">
+              <section class="panel panel-wide overview-products-panel">
                 <div class="panel-header">
                   <div><span class="panel-kicker">PRODUCTS</span><h3>产品状态</h3></div>
                   <button class="text-button" data-view-target="projects" data-config-target="products">全部产品 →</button>
@@ -115,21 +93,23 @@
                 <div class="product-summary-list" id="overview-projects"><div class="empty-state">正在读取产品…</div></div>
               </section>
 
-              <section class="panel environment-panel">
-                <div class="panel-header">
-                  <div><span class="panel-kicker">RUNTIME</span><h3>环境状态</h3></div>
-                  <span class="badge neutral" id="environment-summary">检查中</span>
-                </div>
-                <div class="environment-list" id="environment-list"></div>
-              </section>
+              <aside class="overview-side">
+                <section class="panel environment-panel overview-stack-panel">
+                  <div class="panel-header">
+                    <div><span class="panel-kicker">RUNTIME</span><h3>环境状态</h3></div>
+                    <span class="badge neutral" id="environment-summary">检查中</span>
+                  </div>
+                  <div class="environment-list" id="environment-list"></div>
+                </section>
 
-              <section class="panel panel-full">
-                <div class="panel-header">
-                  <div><span class="panel-kicker">ACTIVITY</span><h3>最近运行</h3></div>
-                  <button class="text-button" data-view-target="runs">查看记录 →</button>
-                </div>
-                <div class="activity-list" id="overview-activity"><div class="empty-state">暂无运行记录</div></div>
-              </section>
+                <section class="panel overview-stack-panel">
+                  <div class="panel-header">
+                    <div><span class="panel-kicker">ACTIVITY</span><h3>最近运行</h3></div>
+                    <button class="text-button" data-view-target="runs">查看记录 →</button>
+                  </div>
+                  <div class="activity-list" id="overview-activity"><div class="empty-state">暂无运行记录</div></div>
+                </section>
+              </aside>
             </div>
           </section>
 
@@ -143,6 +123,23 @@
             <div class="config-section" data-config-panel="products">
               <div class="config-toolbar"><button class="secondary-button" id="projects-refresh">↻ 刷新状态</button><button class="primary-button" id="add-product">＋ 新建产品</button></div>
               <div class="project-card-grid" id="project-card-grid"></div>
+            </div>
+            <div class="config-section" data-config-panel="models">
+              <div class="settings-grid">
+                <section class="panel panel-full">
+                  <div class="panel-header"><div><span class="panel-kicker">PROVIDERS</span><h3>模型 Provider 与 API Key</h3></div></div>
+                  <div class="provider-grid" id="provider-grid"></div>
+                </section>
+                <section class="panel settings-paths">
+                  <div class="panel-header"><div><span class="panel-kicker">LOCAL STORAGE</span><h3>统一数据存储</h3></div></div>
+                  <div class="path-row"><span>SQLite 数据库</span><code id="config-path">—</code></div>
+                  <div class="path-row"><span>API Key 存储</span><code>provider_secrets 表（只写入，不回显）</code></div>
+                </section>
+                <section class="panel security-note">
+                  <span class="security-icon">⌾</span>
+                  <div><span class="panel-kicker">SECRET SAFETY</span><h3>密钥统一保存在 SQLite</h3><p>页面只提交新 Key，不读取旧 Key。接口仅返回配置状态，不返回密钥明文，并拒绝跨域写请求。</p></div>
+                </section>
+              </div>
             </div>
           </section>
 
@@ -264,26 +261,6 @@
             </section>
           </section>
 
-          <section class="view" data-view="settings">
-            <div class="view-intro">
-              <div><span class="section-kicker dark">CONFIGURATION</span><h2>模型与本地配置</h2><p>可在这里保存或更换 API Key；已保存的密钥不会回显到浏览器。</p></div>
-            </div>
-            <div class="settings-grid">
-              <section class="panel panel-full">
-                <div class="panel-header"><div><span class="panel-kicker">PROVIDERS</span><h3>模型 Provider 与 API Key</h3></div></div>
-                <div class="provider-grid" id="provider-grid"></div>
-              </section>
-              <section class="panel settings-paths">
-                <div class="panel-header"><div><span class="panel-kicker">LOCAL STORAGE</span><h3>统一数据存储</h3></div></div>
-                <div class="path-row"><span>SQLite 数据库</span><code id="config-path">—</code></div>
-                <div class="path-row"><span>API Key 存储</span><code>provider_secrets 表（只写入，不回显）</code></div>
-              </section>
-              <section class="panel security-note">
-                <span class="security-icon">⌾</span>
-                <div><span class="panel-kicker">SECRET SAFETY</span><h3>密钥统一保存在 SQLite</h3><p>页面只提交新 Key，不读取旧 Key。接口仅返回配置状态，不返回密钥明文，并拒绝跨域写请求。</p></div>
-              </section>
-            </div>
-          </section>
         </div>
       </main>
     </div>

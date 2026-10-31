@@ -31,7 +31,6 @@ const viewMeta = {
   projects: ["CONFIG", "配置中心"],
   agent: ["AGENT CONSOLE", "Agent控制台"],
   runs: ["AUDIT", "运行记录"],
-  settings: ["SETTINGS", "模型与配置"],
 };
 
 const workflowStages = [
@@ -131,9 +130,10 @@ function renderAll() {
   renderAgentOptions();
   renderGroupChats();
   renderSettings();
-  document.getElementById("nav-project-count").textContent = String(state.overview.products.length);
+  document.getElementById("nav-project-count").textContent = "3";
   document.getElementById("nav-person-count").textContent = String(state.people.length);
   document.getElementById("nav-product-count").textContent = String(state.overview.products.length);
+  document.getElementById("nav-provider-count").textContent = String(state.settings.providers.filter((provider) => provider.ready).length);
   document.getElementById("nav-workflow-count").textContent = String(state.milestones.length);
   document.getElementById("nav-kanban-count").textContent = String(allKanbanTasks().filter(({ task }) => normalizedTaskStatus(task.status) !== "completed").length);
   document.getElementById("nav-group-chat-count").textContent = String(state.groupChats.length);
@@ -161,6 +161,7 @@ function switchView(view) {
   if (!viewMeta[view]) return;
   state.activeView = view;
   document.body.classList.toggle("group-chat-active", view === "group-chat");
+  document.body.classList.toggle("overview-active", view === "overview");
   document.querySelectorAll("[data-view]").forEach((section) => section.classList.toggle("is-active", section.dataset.view === view));
   document.querySelectorAll(".nav-item").forEach((item) => item.classList.toggle("is-active", item.dataset.viewTarget === view));
   document.querySelector('[data-nav-group="projects"]')?.classList.toggle("is-open", view === "projects");
@@ -172,13 +173,13 @@ function switchView(view) {
 }
 
 function switchConfigSection(section) {
-  if (!["people", "products"].includes(section)) return;
+  if (!["people", "products", "models"].includes(section)) return;
   state.activeConfigSection = section;
   document.querySelectorAll("[data-config-panel]").forEach((panel) => panel.classList.toggle("is-active", panel.dataset.configPanel === section));
   document.querySelectorAll(".nav-subitem").forEach((item) => item.classList.toggle("is-active", item.dataset.configTarget === section));
   if (state.activeView === "projects") {
     document.getElementById("page-eyebrow").textContent = "CONFIG";
-    document.getElementById("page-title").textContent = section === "people" ? "人员配置" : "产品配置";
+    document.getElementById("page-title").textContent = ({ people: "人员配置", products: "产品配置", models: "模型配置" })[section];
   }
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -1172,6 +1173,7 @@ async function saveProviderModel(select) {
     });
     state.settings.providers = result.providers;
     state.overview.providers = result.providers;
+    document.getElementById("nav-provider-count").textContent = String(result.providers.filter((provider) => provider.ready).length);
     renderSettings();
     showToast(result.message || "默认模型已更新");
   } catch (error) {
@@ -1195,6 +1197,7 @@ async function saveProviderKey(event) {
     });
     state.settings.providers = result.providers;
     state.overview.providers = result.providers;
+    document.getElementById("nav-provider-count").textContent = String(result.providers.filter((provider) => provider.ready).length);
     state.overview.stats.readyProviders = result.providers.filter((provider) => provider.ready).length;
     renderSettings();
     renderMetrics();
@@ -1215,6 +1218,7 @@ async function clearProviderKey(providerId) {
     });
     state.settings.providers = result.providers;
     state.overview.providers = result.providers;
+    document.getElementById("nav-provider-count").textContent = String(result.providers.filter((provider) => provider.ready).length);
     state.overview.stats.readyProviders = result.providers.filter((provider) => provider.ready).length;
     renderSettings();
     renderMetrics();
