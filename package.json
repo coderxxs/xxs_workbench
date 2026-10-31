@@ -1,0 +1,27 @@
+{
+  "name": "xxs_workbench",
+  "version": "1.0.0",
+  "appVersion": "1.0.0.0",
+  "description": "小小生开发工作台：本地优先的产品研发、Agent 协作与交付工作台。",
+  "private": true,
+  "license": "MIT",
+  "bin": {
+    "xxs_workbench": "dist/src/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/copy-sqlite-bridge.mjs",
+    "start": "node dist/src/cli.js",
+    "web": "node dist/src/server.js",
+    "web:dev": "npm run build && npm run web",
+    "test": "npm run build && node dist/tests/run-tests.js",
+    "runtimes:linux": "node scripts/download-linux-runtimes.mjs",
+    "package:linux": "npm run build && npm run runtimes:linux && node scripts/build-linux-package.mjs"
+  },
+  "engines": {
+    "node": ">=16.20"
+  },
+  "devDependencies": {
+    "@types/node": "16.18.126",
+    "typescript": "4.9.5"
+  }
+}
