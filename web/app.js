@@ -24,7 +24,7 @@ const viewMeta = {
   workflow: ["DELIVERY", "研发工作流"],
   "group-chat": ["TEAM", "团队群聊"],
   projects: ["CONFIG", "配置中心"],
-  agent: ["ASSISTANT", "智能小助手"],
+  agent: ["AGENT CONSOLE", "Agent控制台"],
   runs: ["AUDIT", "运行记录"],
   settings: ["SETTINGS", "模型与配置"],
 };
