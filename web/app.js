@@ -309,6 +309,8 @@ function bindActions() {
   document.addEventListener("click", (event) => {
     const editButton = event.target.closest("[data-edit-product]");
     if (editButton) openProductModal(editButton.dataset.editProduct);
+    const deleteProductButton = event.target.closest("[data-delete-product]");
+    if (deleteProductButton) deleteProductConfiguration(deleteProductButton.dataset.deleteProduct, deleteProductButton);
     const removeEnvironment = event.target.closest("[data-remove-environment]");
     if (removeEnvironment) removeEnvironmentRow(removeEnvironment.dataset.removeEnvironment);
     const generateWorkflow = event.target.closest("[data-workflow-generate]");
@@ -777,7 +779,7 @@ function renderProductCard(product) {
     <article class="project-card product-card">
       <div class="project-card-head product-card-head">
         <div class="project-card-title"><span class="project-glyph">${productInitial(product)}</span><div><h3>${escapeHtml(product.name)}</h3><p>${escapeHtml(product.description || product.id)}</p></div></div>
-        <div class="product-card-head-actions"><span class="badge neutral">${product.environments.length} ENV · ${product.repositoryDetails.length} REPO</span><button class="row-button" data-edit-product="${escapeAttr(product.id)}">配置产品</button></div>
+        <div class="product-card-head-actions"><span class="badge neutral">${product.environments.length} ENV · ${product.repositoryDetails.length} REPO</span><button class="row-button" data-edit-product="${escapeAttr(product.id)}">配置产品</button><button class="icon-button danger-subtle" data-delete-product="${escapeAttr(product.id)}" aria-label="删除 ${escapeAttr(product.name)}" title="删除产品">×</button></div>
       </div>
       <div class="product-body">
         <section class="product-dimension">
@@ -1290,6 +1292,29 @@ async function deleteDevelopmentPerson(personId, button) {
     renderWorkflows();
     renderAgentOptions();
     showToast(`人员 ${person.name} 已删除`);
+  } catch (error) {
+    button.disabled = false;
+    showToast(error.message, true);
+  }
+}
+
+async function deleteProductConfiguration(productId, button) {
+  const product = state.overview.products.find((item) => item.id === productId);
+  if (!product) return;
+  if (!window.confirm(`确定删除产品“${product.name}”吗？\n\n产品环境和部署矩阵将一并删除；本地代码仓库登记会保留。若仍有关联版本、研发任务或 Agent，系统将拒绝删除。`)) return;
+  button.disabled = true;
+  try {
+    const result = await api("/api/products/delete", {
+      method: "POST",
+      body: JSON.stringify({ id: product.id, confirmName: product.name }),
+    });
+    state.overview = await api("/api/overview");
+    if (state.kanbanProductId === product.id) {
+      state.kanbanProductId = "";
+      state.kanbanMilestoneId = "";
+    }
+    renderAll();
+    showToast(result.message || `产品 ${product.name} 已删除`);
   } catch (error) {
     button.disabled = false;
     showToast(error.message, true);

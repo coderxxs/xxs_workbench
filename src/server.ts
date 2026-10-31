@@ -570,6 +570,43 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
     sendJson(response, 200, { ok: true, repository: config.projects[repositoryId], product });
     return;
   }
+  if (method === "POST" && url.pathname === "/api/products/delete") {
+    const body = await readJsonBody(request);
+    const productId = requiredIdentifier(body.id, "id");
+    const config = loadConfig();
+    const product = config.products[productId];
+    if (!product) throw new HttpError(404, `Unknown product: ${productId}`);
+    if (requiredString(body.confirmName, "confirmName") !== product.name) {
+      throw new HttpError(409, "产品名称确认不匹配。");
+    }
+
+    const milestoneReferences = loadMilestones().filter((milestone) => milestone.productId === productId);
+    const workflowReferences = loadWorkflows().filter((workflow) => workflow.productId === productId);
+    const environmentPrefix = `${productId}:`;
+    const agentReferences = loadPeople().flatMap((person) => person.agents
+      .filter((agent) => agent.environmentIds.some((environmentId) => environmentId.startsWith(environmentPrefix)))
+      .map((agent) => `${person.name}/${agent.name}`));
+    if (milestoneReferences.length || workflowReferences.length || agentReferences.length) {
+      const references = [
+        milestoneReferences.length ? `${milestoneReferences.length} 个版本` : "",
+        workflowReferences.length ? `${workflowReferences.length} 条研发流程` : "",
+        agentReferences.length ? `${agentReferences.length} 个 Agent 环境范围` : "",
+      ].filter(Boolean).join("、");
+      throw new HttpError(409, `无法删除产品“${product.name}”：仍被${references}引用，请先解除关联。`);
+    }
+
+    delete config.products[productId];
+    writeConfig(config);
+    const runId = createRunId();
+    audit(runId, "completed", "web.product-delete", { productId, productName: product.name });
+    sendJson(response, 200, {
+      ok: true,
+      deletedId: productId,
+      preservedRepositories: product.repositories.length,
+      message: `产品“${product.name}”已删除，本地代码仓库登记保留。`,
+    });
+    return;
+  }
   if (method === "POST" && url.pathname === "/api/products") {
     const body = await readJsonBody(request);
     const product = normalizeProduct(body.product);
