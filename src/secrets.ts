@@ -1,46 +1,63 @@
 import fs from "fs";
 import path from "path";
 import { findAgentHome } from "./config";
+import { deleteStoredSecret, listStoredSecretNames, loadStoredSecret, saveStoredSecret } from "./database";
 
-const SECRET_FILE = "secrets.env";
-const TEMPLATE = `# 小小生开发工作台 local secrets
-# Keep this file private. It is stored under .dev-agent/ and ignored by Git.
-OPENAI_API_KEY=
-DEEPSEEK_API_KEY=
-KIMI_API_KEY=
-`;
+const LEGACY_SECRET_FILE = "secrets.env";
 
-export function secretFilePath(home = findAgentHome()): string {
+export type SecretValueSource = "environment" | "database" | null;
+
+export interface SecretValueStatus {
+  configured: boolean;
+  databaseConfigured: boolean;
+  source: SecretValueSource;
+}
+
+export function legacySecretFilePath(home = findAgentHome()): string {
   const configured = process.env.DEV_AGENT_ENV_FILE;
-  return configured ? path.resolve(configured) : path.join(home, SECRET_FILE);
+  return configured ? path.resolve(configured) : path.join(home, LEGACY_SECRET_FILE);
 }
 
-export function initializeSecretFile(home = findAgentHome(), force = false): string {
-  const file = secretFilePath(home);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  try {
-    fs.writeFileSync(file, TEMPLATE, {
-      encoding: "utf8",
-      flag: force ? "w" : "wx",
-      mode: 0o600,
-    });
-  } catch (error) {
-    if (isFileExistsError(error)) {
-      throw new Error(`Secret file already exists: ${file}`);
-    }
-    throw error;
-  }
-  return file;
-}
-
-export function loadSecretFile(file = secretFilePath()): string | undefined {
-  if (!fs.existsSync(file)) return undefined;
+export function migrateLegacySecretFile(home = findAgentHome(), file = legacySecretFilePath(home)): number {
+  if (!fs.existsSync(file)) return 0;
   const values = parseEnv(fs.readFileSync(file, "utf8"));
+  let migrated = 0;
   for (const [name, value] of Object.entries(values)) {
-    // Explicit process environment always wins over the local file.
-    if (process.env[name] === undefined) process.env[name] = value;
+    if (!value || loadStoredSecret(home, name)) continue;
+    saveStoredSecret(home, name, value);
+    migrated += 1;
   }
-  return file;
+  fs.rmSync(file);
+  return migrated;
+}
+
+export function providerApiKey(name: string, home = findAgentHome()): string | undefined {
+  validateSecretName(name);
+  return process.env[name] || loadStoredSecret(home, name) || undefined;
+}
+
+export function saveSecretValue(name: string, value: string, home = findAgentHome()): void {
+  validateSecretName(name);
+  const normalized = value.trim();
+  if (!normalized) throw new Error("API Key cannot be empty.");
+  if (normalized.length > 16_384) throw new Error("API Key is too long.");
+  saveStoredSecret(home, name, normalized);
+}
+
+export function deleteSecretValue(name: string, home = findAgentHome()): boolean {
+  validateSecretName(name);
+  return deleteStoredSecret(home, name);
+}
+
+export function secretValueStatus(name: string, home = findAgentHome()): SecretValueStatus {
+  validateSecretName(name);
+  const databaseConfigured = listStoredSecretNames(home).includes(name);
+  const source: SecretValueSource = process.env[name]
+    ? "environment"
+    : databaseConfigured
+      ? "database"
+      : null;
+  return { configured: source !== null, databaseConfigured, source };
 }
 
 export function parseEnv(content: string): Record<string, string> {
@@ -53,9 +70,7 @@ export function parseEnv(content: string): Record<string, string> {
     const separator = line.indexOf("=");
     if (separator < 1) throw new Error(`Invalid secret file line ${index + 1}: expected NAME=value.`);
     const name = line.slice(0, separator).trim();
-    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
-      throw new Error(`Invalid environment variable name on secret file line ${index + 1}.`);
-    }
+    validateSecretName(name, `Invalid environment variable name on secret file line ${index + 1}.`);
     result[name] = parseValue(line.slice(separator + 1).trim());
   }
   return result;
@@ -77,6 +92,6 @@ function parseValue(value: string): string {
   return value;
 }
 
-function isFileExistsError(error: unknown): boolean {
-  return typeof error === "object" && error !== null && "code" in error && (error as { code?: string }).code === "EEXIST";
+function validateSecretName(name: string, message = "Invalid secret name."): void {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) throw new Error(message);
 }

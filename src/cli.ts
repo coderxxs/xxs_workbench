@@ -12,7 +12,7 @@ import {
 } from "./config";
 import { runCaptured, runInteractive } from "./process";
 import { chat, runAgent } from "./providers";
-import { initializeSecretFile, loadSecretFile, secretFilePath } from "./secrets";
+import { migrateLegacySecretFile, providerApiKey, secretValueStatus } from "./secrets";
 import { AgentConfig, ProjectConfig, RiskLevel } from "./types";
 import { buildAgentTools, executeAgentTool } from "./workbench";
 import { PRODUCT_NAME, PRODUCT_VERSION } from "./version";
@@ -23,8 +23,6 @@ Usage:
   xxs_workbench init [--force]
   xxs_workbench doctor
   xxs_workbench config path
-  xxs_workbench secrets init [--force]
-  xxs_workbench secrets path
   xxs_workbench secrets check
   xxs_workbench project add <id> <path>
   xxs_workbench project list
@@ -79,7 +77,7 @@ async function main(argv: string[]): Promise<number> {
 function initialize(args: string[]): number {
   const file = initializeConfig(findAgentHome(), args.includes("--force"));
   console.log(`Initialized: ${file}`);
-  console.log("API keys remain in environment variables; they are not written to config.");
+  console.log("API Keys are configured from the Settings page and stored in SQLite.");
   return 0;
 }
 
@@ -128,25 +126,16 @@ function configCommand(args: string[]): number {
 
 function secretsCommand(args: string[]): number {
   const [subcommand] = args;
-  if (subcommand === "init") {
-    const file = initializeSecretFile(findAgentHome(), args.includes("--force"));
-    console.log(`Created secret file: ${file}`);
-    console.log("Edit this file locally. Values will never be printed by the CLI.");
-    return 0;
-  }
-  if (subcommand === "path") {
-    console.log(secretFilePath());
-    return 0;
-  }
   if (subcommand === "check") {
     const config = loadConfig();
-    console.log(`Secret file: ${secretFilePath()} (${fs.existsSync(secretFilePath()) ? "found" : "not found"})`);
+    console.log(`Secret storage: ${configPath()} (SQLite; environment variables override database values)`);
     for (const provider of Object.values(config.providers)) {
-      console.log(`${provider.id.padEnd(12)} ${process.env[provider.apiKeyEnv] ? "configured" : "missing"}`);
+      const status = secretValueStatus(provider.apiKeyEnv);
+      console.log(`${provider.id.padEnd(12)} ${status.configured ? `configured (${status.source})` : "missing"}`);
     }
     return 0;
   }
-  throw new Error("Usage: dev-agent secrets <init|path|check> [--force]");
+  throw new Error("Usage: xxs_workbench secrets check");
 }
 
 function projectCommand(args: string[]): number {
@@ -260,7 +249,7 @@ function modelCommand(args: string[]): number {
   if (args[0] !== "list") throw new Error("Usage: dev-agent model list");
   const config = loadConfig();
   for (const provider of Object.values(config.providers)) {
-    const keyState = process.env[provider.apiKeyEnv] ? "key:ready" : `key:missing(${provider.apiKeyEnv})`;
+    const keyState = providerApiKey(provider.apiKeyEnv) ? "key:ready" : `key:missing(${provider.apiKeyEnv})`;
     const defaultMarker = provider.id === config.defaultProvider ? " default" : "";
     console.log(`${provider.id.padEnd(12)} ${provider.type.padEnd(20)} ${provider.defaultModel} ${keyState}${defaultMarker}`);
   }
@@ -406,8 +395,7 @@ function messageOf(error: unknown): string {
 
 async function bootstrap(): Promise<number> {
   const argv = process.argv.slice(2);
-  const isSecretInitialization = argv[0] === "secrets" && argv[1] === "init";
-  if (!isSecretInitialization) loadSecretFile();
+  migrateLegacySecretFile();
   return main(argv);
 }
 

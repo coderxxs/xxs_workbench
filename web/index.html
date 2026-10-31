@@ -250,21 +250,21 @@
 
           <section class="view" data-view="settings">
             <div class="view-intro">
-              <div><span class="section-kicker dark">CONFIGURATION</span><h2>模型与本地配置</h2><p>这里只展示配置状态，密钥内容不会进入浏览器。</p></div>
+              <div><span class="section-kicker dark">CONFIGURATION</span><h2>模型与本地配置</h2><p>可在这里保存或更换 API Key；已保存的密钥不会回显到浏览器。</p></div>
             </div>
             <div class="settings-grid">
               <section class="panel panel-full">
-                <div class="panel-header"><div><span class="panel-kicker">PROVIDERS</span><h3>模型 Provider</h3></div></div>
+                <div class="panel-header"><div><span class="panel-kicker">PROVIDERS</span><h3>模型 Provider 与 API Key</h3></div></div>
                 <div class="provider-grid" id="provider-grid"></div>
               </section>
               <section class="panel settings-paths">
-                <div class="panel-header"><div><span class="panel-kicker">LOCAL STORAGE</span><h3>本地数据</h3></div></div>
+                <div class="panel-header"><div><span class="panel-kicker">LOCAL STORAGE</span><h3>统一数据存储</h3></div></div>
                 <div class="path-row"><span>SQLite 数据库</span><code id="config-path">—</code></div>
-                <div class="path-row"><span>密钥文件</span><code id="secret-path">—</code></div>
+                <div class="path-row"><span>API Key 存储</span><code>provider_secrets 表（只写入，不回显）</code></div>
               </section>
               <section class="panel security-note">
                 <span class="security-icon">⌾</span>
-                <div><span class="panel-kicker">LOCAL ONLY</span><h3>仅监听本机地址</h3><p>Web 服务绑定至 127.0.0.1，并拒绝跨域写请求。</p></div>
+                <div><span class="panel-kicker">SECRET SAFETY</span><h3>密钥统一保存在 SQLite</h3><p>页面只提交新 Key，不读取旧 Key。接口仅返回配置状态，不返回密钥明文，并拒绝跨域写请求。</p></div>
               </section>
             </div>
           </section>

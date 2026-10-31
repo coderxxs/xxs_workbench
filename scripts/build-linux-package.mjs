@@ -22,7 +22,6 @@ copyDirectory("dist");
 copyDirectory("web");
 fs.rmSync(path.join(stage, "dist", "tests"), { recursive: true, force: true });
 copyFile("README.md");
-copyFile(".env.example");
 fs.mkdirSync(path.join(stage, "runtimes"), { recursive: true });
 for (const runtime of runtimeList) {
   fs.copyFileSync(
@@ -95,11 +94,7 @@ chmod +x start.sh install.sh
 
 ## 配置 DeepSeek 等模型
 
-\`\`\`bash
-cp .env.example data/secrets.env
-chmod 600 data/secrets.env
-vi data/secrets.env
-\`\`\`
+启动工作台后进入“设置 → 模型 Provider 与 API Key”进行配置。Key 保存在 SQLite 的 \`provider_secrets\` 表中，页面和接口不会回显明文。也可以通过 \`OPENAI_API_KEY\`、\`DEEPSEEK_API_KEY\`、\`KIMI_API_KEY\` 环境变量临时覆盖数据库配置。
 
 ## 监听其他地址
 

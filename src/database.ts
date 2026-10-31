@@ -36,6 +36,26 @@ export function saveStoredConfig(home: string, data: unknown): void {
   invokeSqlite(home, { action: "set_config", data });
 }
 
+export function loadStoredSecret(home: string, name: string): string | null {
+  initializeDatabase(home);
+  return invokeSqlite<string | null>(home, { action: "get_secret", name });
+}
+
+export function saveStoredSecret(home: string, name: string, value: string): void {
+  initializeDatabase(home);
+  invokeSqlite(home, { action: "set_secret", name, value });
+}
+
+export function deleteStoredSecret(home: string, name: string): boolean {
+  initializeDatabase(home);
+  return invokeSqlite<boolean>(home, { action: "delete_secret", name });
+}
+
+export function listStoredSecretNames(home: string): string[] {
+  initializeDatabase(home);
+  return invokeSqlite<string[]>(home, { action: "list_secret_names" });
+}
+
 export function loadRecords<T>(home: string, domain: SqliteCollection): T[] {
   initializeDatabase(home);
   return invokeSqlite<T[]>(home, { action: "list_records", domain });

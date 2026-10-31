@@ -26,6 +26,11 @@ def initialize(connection):
           data_json TEXT NOT NULL,
           updated_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS provider_secrets (
+          name TEXT PRIMARY KEY,
+          value TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
         CREATE TABLE IF NOT EXISTS people (
           id TEXT PRIMARY KEY,
           position INTEGER NOT NULL,
@@ -56,7 +61,7 @@ def initialize(connection):
         );
         CREATE INDEX IF NOT EXISTS idx_audit_events_timestamp ON audit_events(timestamp DESC);
         CREATE INDEX IF NOT EXISTS idx_audit_events_run_id ON audit_events(run_id);
-        PRAGMA user_version = 1;
+        PRAGMA user_version = 2;
         """
     )
 
@@ -125,6 +130,27 @@ def handle(connection, payload):
                 (json.dumps(payload["data"], ensure_ascii=False),),
             )
         return {"ok": True}
+    if action == "get_secret":
+        row = connection.execute(
+            "SELECT value FROM provider_secrets WHERE name = ?", (payload["name"],)
+        ).fetchone()
+        return row[0] if row else None
+    if action == "set_secret":
+        with connection:
+            connection.execute(
+                "INSERT OR REPLACE INTO provider_secrets (name, value, updated_at) VALUES (?, ?, datetime('now'))",
+                (payload["name"], payload["value"]),
+            )
+        return {"ok": True}
+    if action == "delete_secret":
+        with connection:
+            cursor = connection.execute(
+                "DELETE FROM provider_secrets WHERE name = ?", (payload["name"],)
+            )
+        return cursor.rowcount > 0
+    if action == "list_secret_names":
+        rows = connection.execute("SELECT name FROM provider_secrets ORDER BY name").fetchall()
+        return [row[0] for row in rows]
     if action in ("list_records", "replace_records"):
         domain = payload.get("domain")
         if domain not in COLLECTION_TABLES:
@@ -173,6 +199,7 @@ def handle(connection, payload):
         }
         counts["audit_events"] = connection.execute("SELECT COUNT(*) FROM audit_events").fetchone()[0]
         counts["config"] = 1 if connection.execute("SELECT 1 FROM app_config WHERE id = 1").fetchone() else 0
+        counts["provider_secrets"] = connection.execute("SELECT COUNT(*) FROM provider_secrets").fetchone()[0]
         return counts
     raise ValueError(f"Unsupported SQLite action: {action}")
 

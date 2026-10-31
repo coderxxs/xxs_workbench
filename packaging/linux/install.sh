@@ -65,7 +65,7 @@ fi
 if [ "$TARGET_DIR" != "$SOURCE_DIR" ]; then
   rm -rf "$TARGET_DIR/dist" "$TARGET_DIR/web"
   cp -R "$SOURCE_DIR/dist" "$SOURCE_DIR/web" "$TARGET_DIR/"
-  cp "$SOURCE_DIR/package.json" "$SOURCE_DIR/VERSION" "$SOURCE_DIR/README.md" "$SOURCE_DIR/README-LINUX.md" "$SOURCE_DIR/RUNTIME-SOURCES.md" "$SOURCE_DIR/.env.example" "$SOURCE_DIR/start.sh" "$SOURCE_DIR/install.sh" "$TARGET_DIR/"
+  cp "$SOURCE_DIR/package.json" "$SOURCE_DIR/VERSION" "$SOURCE_DIR/README.md" "$SOURCE_DIR/README-LINUX.md" "$SOURCE_DIR/RUNTIME-SOURCES.md" "$SOURCE_DIR/start.sh" "$SOURCE_DIR/install.sh" "$TARGET_DIR/"
 fi
 
 mkdir -p "$TARGET_DIR/runtime" "$TARGET_DIR/data"

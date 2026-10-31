@@ -34,7 +34,7 @@
 - `read`、`write`、`deploy` 三级风险与交互式审批
 - OpenAI Responses API、DeepSeek/Kimi 等 OpenAI-compatible Chat Completions 接入
 - 自然语言任务通过工具调用查询项目、查看 Git 状态、运行已登记命令
-- API Key 环境变量引用，不把密钥写入配置
+- API Key 通过设置页保存到 SQLite，接口不回显明文；环境变量可临时覆盖数据库值
 - SQLite 运行审计，不记录完整提示词
 - Node、Git、npm、Docker 和项目配置诊断
 - 本地 Web 管理台：版本化研发工作流、配置中心、命令执行、Agent 对话、环境诊断和审计记录
@@ -81,30 +81,17 @@ node dist/src/cli.js run demo test
 node dist/src/cli.js task "检查 demo 的 Git 状态并运行测试" --project demo
 ```
 
-## 通过文件配置 API Key
+## 配置 API Key
 
-创建本地密钥文件：
+进入“设置 → 模型 Provider 与 API Key”，可直接保存、更换或清除各 Provider 的 Key。页面不会读取或回显旧 Key；保存内容写入 `.dev-agent/dev-work-agent.sqlite` 的 `provider_secrets` 表。显式环境变量的优先级高于数据库值。
 
-```powershell
-node dist/src/cli.js secrets init
-node dist/src/cli.js secrets path
-```
-
-编辑 `.dev-agent/secrets.env`：
-
-```dotenv
-OPENAI_API_KEY=你的Key
-DEEPSEEK_API_KEY=你的Key
-KIMI_API_KEY=你的Key
-```
-
-CLI 启动时会自动加载该文件。已经存在的系统环境变量优先于文件值。可以用下面的命令检查配置状态，它不会显示 Key：
+可用下面的命令检查配置状态，它不会显示 Key：
 
 ```powershell
 node dist/src/cli.js secrets check
 ```
 
-`.dev-agent/` 已被 Git 忽略。也可通过 `DEV_AGENT_ENV_FILE` 指向其他密钥文件。
+升级时如果检测到旧版 `secrets.env`，系统会先把非空 Key 迁移到 SQLite，确认写入后删除该文件。
 
 ## 调用模型
 
@@ -116,7 +103,7 @@ node dist/src/cli.js ask "给出排查思路" --provider deepseek
 node dist/src/cli.js ask "总结发布风险" --provider kimi --model <可用模型名>
 ```
 
-执行 `init` 后，配置位于 `.dev-agent/dev-work-agent.sqlite`。模型名称可能随供应商更新，业务逻辑不会依赖具体名称。API Key 仍保存在独立的 `secrets.env`，不会进入数据库。
+执行 `init` 后，配置和 API Key 位于 `.dev-agent/dev-work-agent.sqlite`。模型名称可能随供应商更新，业务逻辑不会依赖具体名称。
 
 ## 安全模型
 
@@ -124,7 +111,7 @@ node dist/src/cli.js ask "总结发布风险" --provider kimi --model <可用模
 - `write`、`deploy` 命令默认询问确认；自动化中必须显式传入 `--yes`。
 - CLI 不能执行任意命令，只能按名称调用项目配置中已经登记的命令。
 - 模型只能提出工具调用；本地策略层负责校验项目范围、命令白名单和审批。
-- API Key 只读取配置指定的环境变量。
+- API Key 保存在 SQLite 的独立表中，页面与状态接口不返回明文；系统环境变量可覆盖数据库值。
 - SQLite 的 `audit_events` 表保存开始时间、结束时间、退出码和参数摘要。
 
 配置示例：

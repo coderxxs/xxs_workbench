@@ -10,7 +10,7 @@ import { createGroupChat, loadGroupChats, mentionedGroupChatMemberIds, postGroup
 import { consolidatePersonAgents, createPerson, deletePerson, ensurePersonAgentSkill, findPersonAgent, hasPersonAgentForRole, loadPeople, savePersonAgent, updatePerson } from "./people";
 import { runCaptured, runShellCaptured } from "./process";
 import { chat, runAgent } from "./providers";
-import { loadSecretFile, secretFilePath } from "./secrets";
+import { deleteSecretValue, migrateLegacySecretFile, providerApiKey, saveSecretValue, secretValueStatus } from "./secrets";
 import { currentUser } from "./session";
 import { AgentConfig, AgentToolPermission, AssigneeRole, DevelopmentMilestone, DevelopmentPerson, DevelopmentWorkflow, GroupChat, GroupChatActivity, PersonAgentProfile, ProductConfig, ProductDeployment, ProductEnvironment, ProjectConfig, TaskExecutionStage, WorkflowStage, WorkflowTaskItem } from "./types";
 import { buildAgentTools, executeAgentTool } from "./workbench";
@@ -72,7 +72,7 @@ export function createWorkbenchServer(options: ServerOptions = {}): http.Server 
 async function handleApi(request: IncomingMessage, response: ServerResponse, url: URL): Promise<void> {
   const method = request.method ?? "GET";
   if (method === "POST") validateWriteRequest(request);
-  loadSecretFile();
+  migrateLegacySecretFile();
 
   if (method === "GET" && url.pathname === "/api/health") {
     sendJson(response, 200, { ok: true, service: PRODUCT_NAME, version: PRODUCT_VERSION, time: new Date().toISOString() });
@@ -100,7 +100,7 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
         environments: products.reduce((total, product) => total + product.environments.length, 0),
         repositories: repositories.length,
         cleanRepositories: repositories.filter((repository) => repository.clean).length,
-        readyProviders: Object.values(config.providers).filter((provider) => Boolean(process.env[provider.apiKeyEnv]))
+        readyProviders: Object.values(config.providers).filter((provider) => Boolean(providerApiKey(provider.apiKeyEnv)))
           .length,
         completedRuns: runs.filter((run) => run.event === "completed").length,
       },
@@ -134,8 +134,29 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
     sendJson(response, 200, {
       ok: true,
       configPath: configPath(),
-      secretPath: secretFilePath(),
       providers: publicProviders(config),
+    });
+    return;
+  }
+  if (method === "POST" && url.pathname === "/api/settings/provider-key") {
+    const body = await readJsonBody(request);
+    const config = loadConfig();
+    const providerId = requiredIdentifier(body.providerId, "providerId");
+    const provider = config.providers[providerId];
+    if (!provider) throw new HttpError(404, `Unknown provider: ${providerId}`);
+    const action = requiredEnum(body.action, "action", ["save", "delete"] as const);
+    if (action === "save") {
+      saveSecretValue(provider.apiKeyEnv, requiredString(body.apiKey, "apiKey"));
+    } else {
+      deleteSecretValue(provider.apiKeyEnv);
+    }
+    const runId = createRunId();
+    audit(runId, "completed", `web.provider-key-${action}`, { provider: providerId, storage: "sqlite" });
+    sendJson(response, 200, {
+      ok: true,
+      providerId,
+      providers: publicProviders(config),
+      message: action === "save" ? "API Key 已保存到 SQLite。" : "SQLite 中的 API Key 已清除。",
     });
     return;
   }
@@ -359,7 +380,7 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
     const providerId = typeof body.providerId === "string" && body.providerId ? body.providerId : workflow.providerId;
     const provider = config.providers[providerId];
     if (!provider) throw new HttpError(404, `Unknown provider: ${providerId}`);
-    if (!process.env[provider.apiKeyEnv]) throw new HttpError(400, `Provider key is not configured: ${providerId}`);
+    if (!providerApiKey(provider.apiKeyEnv)) throw new HttpError(400, `Provider key is not configured: ${providerId}`);
 
     const runId = createRunId();
     audit(runId, "started", `web.workflow-${action}`, { workflowId: workflow.id, productId: product.id, provider: providerId });
@@ -528,7 +549,7 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
     const providerId = profile?.agent.providerId ?? (typeof body.providerId === "string" ? body.providerId : config.defaultProvider);
     const provider = config.providers[providerId];
     if (!provider) throw new HttpError(404, `Unknown provider: ${providerId}`);
-    if (!process.env[provider.apiKeyEnv]) throw new HttpError(400, `Provider key is not configured: ${providerId}`);
+    if (!providerApiKey(provider.apiKeyEnv)) throw new HttpError(400, `Provider key is not configured: ${providerId}`);
     const productId = typeof body.productId === "string" && body.productId ? body.productId : undefined;
     const legacyProjectId = typeof body.projectId === "string" && body.projectId ? body.projectId : undefined;
     if (productId && !config.products[productId]) throw new HttpError(404, `Unknown product: ${productId}`);
@@ -594,7 +615,7 @@ async function replyToAdministratorInGroupChat(
   const config = loadConfig();
   const provider = config.providers[agent.providerId];
   if (!provider) throw new HttpError(404, `Unknown provider for ${agent.name}: ${agent.providerId}`);
-  if (!process.env[provider.apiKeyEnv]) throw new HttpError(400, `Provider key is not configured: ${agent.providerId}`);
+  if (!providerApiKey(provider.apiKeyEnv)) throw new HttpError(400, `Provider key is not configured: ${agent.providerId}`);
 
   const assignedTasks = loadWorkflows().flatMap((workflow) => (workflow.taskItems || [])
     .filter((task) => task.ownerId === responder.id)
@@ -857,14 +878,19 @@ function normalizeProduct(value: unknown): ProductConfig {
 }
 
 function publicProviders(config: AgentConfig): Array<Record<string, unknown>> {
-  return Object.values(config.providers).map((provider) => ({
-    id: provider.id,
-    type: provider.type,
-    baseUrl: provider.baseUrl,
-    model: provider.defaultModel,
-    ready: Boolean(process.env[provider.apiKeyEnv]),
-    isDefault: provider.id === config.defaultProvider,
-  }));
+  return Object.values(config.providers).map((provider) => {
+    const keyStatus = secretValueStatus(provider.apiKeyEnv);
+    return {
+      id: provider.id,
+      type: provider.type,
+      baseUrl: provider.baseUrl,
+      model: provider.defaultModel,
+      ready: keyStatus.configured,
+      keySource: keyStatus.source,
+      databaseConfigured: keyStatus.databaseConfigured,
+      isDefault: provider.id === config.defaultProvider,
+    };
+  });
 }
 
 async function doctorChecks(): Promise<Array<Record<string, unknown>>> {
@@ -1019,7 +1045,8 @@ class HttpError extends Error {
 }
 
 if (require.main === module) {
-  loadSecretFile();
+  const migratedSecrets = migrateLegacySecretFile();
+  if (migratedSecrets) console.log(`Migrated ${migratedSecrets} legacy API Key(s) into SQLite and removed secrets.env.`);
   const home = findAgentHome();
   if (!hasStoredConfig(home)) {
     initializeConfig(home);

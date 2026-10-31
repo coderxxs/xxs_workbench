@@ -9,7 +9,7 @@ import { listLocalDirectories, suggestRepositoryId } from "../src/directory-brow
 import { createGroupChat, loadGroupChats, mentionedGroupChatMemberIds, postGroupChatMessage } from "../src/group-chats";
 import { consolidatePersonAgents, createPerson, deletePerson, ensurePersonAgentSkill, hasPersonAgentForRole, loadPeople, peopleAgentArchivePath, peoplePath, savePersonAgent, updatePerson } from "../src/people";
 import { runShellCaptured } from "../src/process";
-import { initializeSecretFile, loadSecretFile, parseEnv, secretFilePath } from "../src/secrets";
+import { deleteSecretValue, legacySecretFilePath, migrateLegacySecretFile, parseEnv, providerApiKey, saveSecretValue, secretValueStatus } from "../src/secrets";
 import { currentUser } from "../src/session";
 import { buildAgentTools } from "../src/workbench";
 import { createMilestone, createWorkflow, loadMilestones, loadWorkflows, parseWorkflowTaskItems, saveWorkflow } from "../src/workflows";
@@ -314,23 +314,34 @@ try {
     assert.strictEqual(tasks[3].title, "发布正式版本");
   });
 
-  test("parses a local secret file without overriding the process environment", () => {
+  test("migrates the legacy secret file into SQLite without overriding the environment", () => {
     const parsed = parseEnv("# comment\nOPENAI_API_KEY='file-openai'\nDEEPSEEK_API_KEY=deep=seek\n");
     assert.strictEqual(parsed.OPENAI_API_KEY, "file-openai");
     assert.strictEqual(parsed.DEEPSEEK_API_KEY, "deep=seek");
 
-    const file = initializeSecretFile();
-    assert.strictEqual(file, secretFilePath());
+    const file = legacySecretFilePath(agentHome);
     fs.writeFileSync(file, "OPENAI_API_KEY=file-openai\nKIMI_API_KEY=\"file-kimi\"\n");
     const originalOpenAi = process.env.OPENAI_API_KEY;
-    const originalKimi = process.env.KIMI_API_KEY;
     process.env.OPENAI_API_KEY = "environment-openai";
-    delete process.env.KIMI_API_KEY;
-    loadSecretFile();
-    assert.strictEqual(process.env.OPENAI_API_KEY, "environment-openai");
-    assert.strictEqual(process.env.KIMI_API_KEY, "file-kimi");
+    assert.strictEqual(migrateLegacySecretFile(agentHome, file), 2);
+    assert.strictEqual(fs.existsSync(file), false);
+    assert.strictEqual(providerApiKey("OPENAI_API_KEY", agentHome), "environment-openai");
+    assert.strictEqual(providerApiKey("KIMI_API_KEY", agentHome), "file-kimi");
+    assert.strictEqual(secretValueStatus("KIMI_API_KEY", agentHome).source, "database");
     restoreEnvironment("OPENAI_API_KEY", originalOpenAi);
-    restoreEnvironment("KIMI_API_KEY", originalKimi);
+  });
+
+  test("saves and clears page-managed API keys in SQLite", () => {
+    const name = "TEST_PROVIDER_API_KEY";
+    const original = process.env[name];
+    delete process.env[name];
+    saveSecretValue(name, "page-managed-key", agentHome);
+    assert.strictEqual(secretValueStatus(name, agentHome).source, "database");
+    assert.strictEqual(secretValueStatus(name, agentHome).databaseConfigured, true);
+    assert.strictEqual(providerApiKey(name, agentHome), "page-managed-key");
+    assert.strictEqual(deleteSecretValue(name, agentHome), true);
+    assert.strictEqual(secretValueStatus(name, agentHome).configured, false);
+    restoreEnvironment(name, original);
   });
 
   test("stores application state and audit events in SQLite", () => {
@@ -343,6 +354,7 @@ try {
     assert.ok(stats.milestones >= 1);
     assert.ok(stats.workflows >= 1);
     assert.ok(stats.audit_events >= 1);
+    assert.ok(stats.provider_secrets >= 2);
     assert.strictEqual(readAudit(1)[0].runId, "sqlite-test-run");
   });
 

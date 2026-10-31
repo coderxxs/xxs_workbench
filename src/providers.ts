@@ -1,6 +1,7 @@
 import http from "http";
 import https from "https";
 import { ProviderConfig } from "./types";
+import { providerApiKey } from "./secrets";
 
 export interface ChatRequest {
   prompt: string;
@@ -22,7 +23,7 @@ export interface AgentRequest extends ChatRequest {
 }
 
 export async function chat(provider: ProviderConfig, request: ChatRequest): Promise<string> {
-  const apiKey = process.env[provider.apiKeyEnv];
+  const apiKey = providerApiKey(provider.apiKeyEnv);
   if (!apiKey) {
     throw new Error(`Missing API key environment variable: ${provider.apiKeyEnv}`);
   }
@@ -56,7 +57,7 @@ export async function chat(provider: ProviderConfig, request: ChatRequest): Prom
 
 export async function runAgent(provider: ProviderConfig, request: AgentRequest): Promise<string> {
   if (request.tools.length === 0) return chat(provider, request);
-  const apiKey = process.env[provider.apiKeyEnv];
+  const apiKey = providerApiKey(provider.apiKeyEnv);
   if (!apiKey) {
     throw new Error(`Missing API key environment variable: ${provider.apiKeyEnv}`);
   }

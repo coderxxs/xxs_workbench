@@ -181,6 +181,11 @@ function bindActions() {
   document.getElementById("runs-refresh").addEventListener("click", refreshRuns);
   document.getElementById("clear-chat").addEventListener("click", clearChat);
   document.getElementById("agent-form").addEventListener("submit", submitAgentTask);
+  document.getElementById("provider-grid").addEventListener("submit", saveProviderKey);
+  document.getElementById("provider-grid").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-clear-provider-key]");
+    if (button && !button.disabled) clearProviderKey(button.dataset.clearProviderKey);
+  });
   document.getElementById("add-product").addEventListener("click", () => openProductModal());
   document.getElementById("add-person").addEventListener("click", openPersonModal);
   document.getElementById("person-form").addEventListener("submit", createDevelopmentPerson);
@@ -919,14 +924,72 @@ function renderSettings() {
   const providers = state.settings.providers || [];
   document.getElementById("provider-grid").innerHTML = providers.map((provider) => `
     <article class="provider-card">
-      <div class="provider-card-head"><span class="provider-logo ${escapeAttr(provider.id)}">${escapeHtml(provider.id.slice(0, 2))}</span><span class="badge ${provider.ready ? "success" : "neutral"}">${provider.ready ? "configured" : "missing key"}</span></div>
+      <div class="provider-card-head"><span class="provider-logo ${escapeAttr(provider.id)}">${escapeHtml(provider.id.slice(0, 2))}</span><span class="badge ${provider.ready ? "success" : "neutral"}">${provider.ready ? "已配置" : "未配置"}</span></div>
       <h4>${escapeHtml(provider.id)} ${provider.isDefault ? '<span class="badge neutral">default</span>' : ""}</h4>
       <p title="${escapeAttr(provider.baseUrl)}">${escapeHtml(provider.baseUrl)}</p>
       <div class="provider-model">${escapeHtml(provider.model)} · ${escapeHtml(provider.type)}</div>
+      <form class="provider-key-form" data-provider-key-form="${escapeAttr(provider.id)}">
+        <label for="provider-key-${escapeAttr(provider.id)}">API Key</label>
+        <input id="provider-key-${escapeAttr(provider.id)}" name="apiKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="输入新 Key（不会回显）" required />
+        <small>当前来源：${escapeHtml(providerKeySourceLabel(provider.keySource))}</small>
+        <div class="provider-key-actions">
+          <button class="primary-button" type="submit">保存 Key</button>
+          <button class="secondary-button" type="button" data-clear-provider-key="${escapeAttr(provider.id)}" ${provider.databaseConfigured ? "" : "disabled"}>清除数据库 Key</button>
+        </div>
+      </form>
     </article>
   `).join("");
   document.getElementById("config-path").textContent = state.settings.configPath;
-  document.getElementById("secret-path").textContent = state.settings.secretPath;
+}
+
+function providerKeySourceLabel(source) {
+  if (source === "database") return "SQLite 数据库";
+  if (source === "environment") return "环境变量";
+  return "未配置";
+}
+
+async function saveProviderKey(event) {
+  const form = event.target.closest("[data-provider-key-form]");
+  if (!form) return;
+  event.preventDefault();
+  const button = form.querySelector('button[type="submit"]');
+  const input = form.elements.apiKey;
+  button.disabled = true;
+  button.textContent = "保存中…";
+  try {
+    const result = await api("/api/settings/provider-key", {
+      method: "POST",
+      body: JSON.stringify({ providerId: form.dataset.providerKeyForm, action: "save", apiKey: input.value }),
+    });
+    state.settings.providers = result.providers;
+    state.overview.providers = result.providers;
+    state.overview.stats.readyProviders = result.providers.filter((provider) => provider.ready).length;
+    renderSettings();
+    renderMetrics();
+    showToast(result.message || "API Key 已保存");
+  } catch (error) {
+    showToast(error.message, true);
+    button.disabled = false;
+    button.textContent = "保存 Key";
+  }
+}
+
+async function clearProviderKey(providerId) {
+  if (!window.confirm(`确认清除 ${providerId} 保存在 SQLite 中的 API Key？`)) return;
+  try {
+    const result = await api("/api/settings/provider-key", {
+      method: "POST",
+      body: JSON.stringify({ providerId, action: "delete" }),
+    });
+    state.settings.providers = result.providers;
+    state.overview.providers = result.providers;
+    state.overview.stats.readyProviders = result.providers.filter((provider) => provider.ready).length;
+    renderSettings();
+    renderMetrics();
+    showToast(result.message || "数据库 Key 已清除");
+  } catch (error) {
+    showToast(error.message, true);
+  }
 }
 
 function openPersonModal(personId) {

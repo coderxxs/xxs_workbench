@@ -502,6 +502,14 @@ td code { color: #596574; font-size: 10px; }
 .provider-card h4 { margin: 14px 0 4px; text-transform: capitalize; }
 .provider-card p { margin: 0; color: #808995; font-size: 9px; line-height: 1.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .provider-model { margin-top: 12px; padding-top: 11px; border-top: 1px solid #e2e5e8; color: #4d5865; font-size: 10px; font-weight: 700; }
+.provider-key-form { display: grid; gap: 8px; margin-top: 14px; padding-top: 13px; border-top: 1px solid #e2e5e8; }
+.provider-key-form label { color: #4d5865; font-size: var(--type-caption); font-weight: 750; }
+.provider-key-form input { width: 100%; padding: 10px 11px; color: #34404d; background: #fff; border: 1px solid #dfe3e7; border-radius: 9px; outline: 0; }
+.provider-key-form input:focus { border-color: #a79ee6; box-shadow: 0 0 0 3px rgba(102,87,217,.08); }
+.provider-key-form small { color: #7f8995; font-size: var(--type-caption); }
+.provider-key-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
+.provider-key-actions button { flex: 1 1 120px; min-height: 38px; font-size: var(--type-caption); }
+.provider-key-actions button:disabled { cursor: not-allowed; opacity: .48; transform: none; }
 .settings-paths { padding-bottom: 12px; }
 .path-row { display: grid; gap: 7px; padding: 13px 20px; border-top: 1px solid #edf0f2; }
 .path-row span { color: #818a95; font-size: 10px; }
@@ -964,6 +972,11 @@ html[data-theme="dark"] th { color: #8d9aaa; background: #18232f; }
 html[data-theme="dark"] td code { color: #aeb9c6; }
 html[data-theme="dark"] .provider-card p { color: #8996a5; }
 html[data-theme="dark"] .provider-model { color: #bac4d0; border-color: #303b48; }
+html[data-theme="dark"] .provider-key-form { border-color: #303b48; }
+html[data-theme="dark"] .provider-key-form label { color: #c2ccd8; }
+html[data-theme="dark"] .provider-key-form input { color: #d9e0e9; background: #141e29; border-color: #303d4b; }
+html[data-theme="dark"] .provider-key-form input::placeholder { color: #687687; }
+html[data-theme="dark"] .provider-key-form small { color: #8491a1; }
 html[data-theme="dark"] .path-row code { color: #b8c2ce; }
 html[data-theme="dark"] .security-note p { color: #8f9aaa; }
 html[data-theme="dark"] .repo-name small { color: #7f8c9c; }
