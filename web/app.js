@@ -25,7 +25,7 @@ const state = {
 
 const viewMeta = {
   overview: ["WORKSPACE", "工作台总览"],
-  workflow: ["DELIVERY", "研发工作流"],
+  workflow: ["DELIVERY", "任务"],
   kanban: ["BOARD", "研发任务看板"],
   "group-chat": ["TEAM", "团队群聊"],
   projects: ["CONFIG", "配置中心"],
@@ -160,6 +160,7 @@ function bindNavigation() {
 function switchView(view) {
   if (!viewMeta[view]) return;
   state.activeView = view;
+  document.body.classList.toggle("group-chat-active", view === "group-chat");
   document.querySelectorAll("[data-view]").forEach((section) => section.classList.toggle("is-active", section.dataset.view === view));
   document.querySelectorAll(".nav-item").forEach((item) => item.classList.toggle("is-active", item.dataset.viewTarget === view));
   document.querySelector('[data-nav-group="projects"]')?.classList.toggle("is-open", view === "projects");

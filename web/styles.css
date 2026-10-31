@@ -478,6 +478,20 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .group-chat-message.administrator .group-chat-avatar { color: #fff; background: #6657d9; }
 .group-chat-message.agent .group-chat-avatar { color: #08745f; background: #dff7f0; }
 
+@media (min-width: 861px) {
+  body.group-chat-active { height: 100vh; overflow: hidden; }
+  body.group-chat-active .app-shell { height: 100vh; min-height: 0; }
+  body.group-chat-active .main-content { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100vh; min-height: 0; overflow: hidden; }
+  body.group-chat-active .content-area { min-height: 0; padding-bottom: 28px; overflow: hidden; }
+  body.group-chat-active .view[data-view="group-chat"].is-active { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100%; min-height: 0; }
+  body.group-chat-active .group-chat-layout { height: 100%; min-height: 0; overflow: hidden; }
+  body.group-chat-active .group-chat-sidebar { align-self: stretch; display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; }
+  body.group-chat-active .group-chat-list { min-height: 0; align-content: start; overflow-y: auto; }
+  body.group-chat-active .group-chat-room { height: 100%; min-height: 0; grid-template-rows: auto minmax(0, 1fr) auto; }
+  body.group-chat-active .group-chat-messages { min-height: 0; max-height: none; }
+  body.group-chat-active .group-chat-composer { max-height: 46vh; overflow-y: auto; }
+}
+
 .agent-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; min-height: calc(100vh - 170px); }
 .chat-panel { min-width: 0; display: flex; flex-direction: column; background: white; border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow); }
 .chat-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; border-bottom: 1px solid var(--line); }
