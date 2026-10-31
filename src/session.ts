@@ -27,7 +27,7 @@ const ADMINISTRATOR_PERMISSIONS: AdministratorPermission[] = [
 export function currentUser(): CurrentUser {
   return {
     id: "local-administrator",
-    name: process.env.DEV_AGENT_USER_NAME?.trim() || "管理员",
+    name: process.env.DEV_AGENT_USER_NAME?.trim() || "小小生",
     role: "administrator",
     roleLabel: "本地管理员",
     local: true,

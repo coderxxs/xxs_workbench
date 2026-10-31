@@ -34,6 +34,7 @@ try {
   test("uses a separate local administrator as the default current user", () => {
     const user = currentUser();
     assert.strictEqual(user.id, "local-administrator");
+    assert.strictEqual(user.name, "小小生");
     assert.strictEqual(user.role, "administrator");
     assert.strictEqual(user.roleLabel, "本地管理员");
     assert.strictEqual(user.local, true);

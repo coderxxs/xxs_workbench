@@ -53,7 +53,7 @@ node dist/src/cli.js doctor
 npm run web
 ```
 
-管理台默认地址为 `http://127.0.0.1:4317`。服务只监听本机地址，不会向浏览器返回 API Key。可用 `DEV_AGENT_PORT` 修改端口。当前会话默认显示“管理员 / 本地管理员”；如需修改显示名称，可设置 `DEV_AGENT_USER_NAME`，其管理员角色和权限保持不变。
+管理台默认地址为 `http://127.0.0.1:4317`。服务只监听本机地址，不会向浏览器返回 API Key。可用 `DEV_AGENT_PORT` 修改端口。当前会话默认显示“小小生 / 本地管理员”；如需修改显示名称，可设置 `DEV_AGENT_USER_NAME`，其管理员角色和权限保持不变。
 
 ## Linux 安装包
 
