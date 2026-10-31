@@ -173,7 +173,7 @@ function validateTaskItem(value: unknown): void {
     typeof value.id !== "string" ||
     typeof value.title !== "string" ||
     !["coding", "deployment", "testing", "release"].includes(value.stage) ||
-    !["pending", "in_progress", "completed", "failed"].includes(value.status) ||
+    !["pending", "in_progress", "blocked", "completed", "failed"].includes(value.status) ||
     (value.ownerId !== undefined && typeof value.ownerId !== "string") ||
     (value.agentId !== undefined && typeof value.agentId !== "string")
   ) {

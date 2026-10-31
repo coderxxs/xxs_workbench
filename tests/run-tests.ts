@@ -298,6 +298,15 @@ try {
     assert.strictEqual(loadedTask?.agentId, person.agents[0].id);
   });
 
+  test("persists blocked tasks for the delivery board", () => {
+    const workflow = loadWorkflows()[0];
+    const task = workflow.taskItems?.[0];
+    assert.ok(task);
+    task!.status = "blocked";
+    saveWorkflow(workflow);
+    assert.strictEqual(loadWorkflows()[0].taskItems?.[0].status, "blocked");
+  });
+
   test("parses staged markdown tasks for assignment", () => {
     const tasks = parseWorkflowTaskItems([
       "## 编码",

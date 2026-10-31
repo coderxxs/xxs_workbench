@@ -11,6 +11,9 @@ const state = {
   agentPresets: [],
   groupChats: [],
   activeGroupChatId: null,
+  kanbanMilestoneId: "",
+  kanbanOwnerId: "",
+  draggedKanbanTask: null,
   settings: null,
   pendingCommand: null,
   productDraft: null,
@@ -22,6 +25,7 @@ const state = {
 const viewMeta = {
   overview: ["WORKSPACE", "工作台总览"],
   workflow: ["DELIVERY", "研发工作流"],
+  kanban: ["BOARD", "研发任务看板"],
   "group-chat": ["TEAM", "团队群聊"],
   projects: ["CONFIG", "配置中心"],
   agent: ["AGENT CONSOLE", "Agent控制台"],
@@ -119,6 +123,7 @@ function renderAll() {
   renderPeople();
   renderProjectCards();
   renderWorkflows();
+  renderKanban();
   renderEnvironment();
   renderActivity();
   renderRuns();
@@ -129,6 +134,7 @@ function renderAll() {
   document.getElementById("nav-person-count").textContent = String(state.people.length);
   document.getElementById("nav-product-count").textContent = String(state.overview.products.length);
   document.getElementById("nav-workflow-count").textContent = String(state.milestones.length);
+  document.getElementById("nav-kanban-count").textContent = String(allKanbanTasks().filter(({ task }) => normalizedTaskStatus(task.status) !== "completed").length);
   document.getElementById("nav-group-chat-count").textContent = String(state.groupChats.length);
 }
 
@@ -181,6 +187,28 @@ function bindActions() {
   document.getElementById("runs-refresh").addEventListener("click", refreshRuns);
   document.getElementById("clear-chat").addEventListener("click", clearChat);
   document.getElementById("agent-form").addEventListener("submit", submitAgentTask);
+  document.getElementById("kanban-milestone-filter").addEventListener("change", (event) => {
+    state.kanbanMilestoneId = event.target.value;
+    renderKanban();
+  });
+  document.getElementById("kanban-owner-filter").addEventListener("change", (event) => {
+    state.kanbanOwnerId = event.target.value;
+    renderKanban();
+  });
+  const kanbanBoard = document.getElementById("kanban-board");
+  kanbanBoard.addEventListener("change", (event) => {
+    const select = event.target.closest("[data-kanban-status]");
+    if (select) updateKanbanTaskStatus(select.dataset.workflowId, select.dataset.taskId, select.value, select);
+  });
+  kanbanBoard.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-kanban-open]");
+    if (button) openKanbanWorkflow(button.dataset.kanbanOpen);
+  });
+  kanbanBoard.addEventListener("dragstart", beginKanbanDrag);
+  kanbanBoard.addEventListener("dragend", endKanbanDrag);
+  kanbanBoard.addEventListener("dragover", allowKanbanDrop);
+  kanbanBoard.addEventListener("dragleave", leaveKanbanDrop);
+  kanbanBoard.addEventListener("drop", dropKanbanTask);
   document.getElementById("provider-grid").addEventListener("submit", saveProviderKey);
   document.getElementById("provider-grid").addEventListener("click", (event) => {
     const button = event.target.closest("[data-clear-provider-key]");
@@ -432,6 +460,153 @@ function renderWorkflows() {
   target.innerHTML = state.milestones.map(renderVersionCard).join("");
 }
 
+const kanbanColumns = [
+  { status: "pending", label: "待办", hint: "尚未开始", tone: "pending" },
+  { status: "in_progress", label: "进行中", hint: "正在处理", tone: "progress" },
+  { status: "blocked", label: "阻塞", hint: "等待确认或处理", tone: "blocked" },
+  { status: "completed", label: "已完成", hint: "已交付结果", tone: "completed" },
+];
+
+function allKanbanTasks() {
+  const milestones = new Map(state.milestones.map((item) => [item.id, item]));
+  const products = new Map((state.overview?.products || []).map((item) => [item.id, item]));
+  return state.workflows.flatMap((workflow) => (workflow.taskItems || []).map((task) => ({
+    workflow,
+    task,
+    milestone: milestones.get(workflow.milestoneId),
+    product: products.get(workflow.productId),
+    owner: state.people.find((person) => person.id === task.ownerId),
+  })));
+}
+
+function normalizedTaskStatus(status) {
+  return status === "failed" ? "blocked" : status;
+}
+
+function renderKanban() {
+  const milestoneSelect = document.getElementById("kanban-milestone-filter");
+  const ownerSelect = document.getElementById("kanban-owner-filter");
+  if (!milestoneSelect || !ownerSelect) return;
+
+  milestoneSelect.innerHTML = '<option value="">全部版本</option>' + state.milestones.map((milestone) =>
+    `<option value="${escapeAttr(milestone.id)}">${escapeHtml(milestone.title)}</option>`,
+  ).join("");
+  if (state.milestones.some((item) => item.id === state.kanbanMilestoneId)) milestoneSelect.value = state.kanbanMilestoneId;
+  else state.kanbanMilestoneId = "";
+
+  ownerSelect.innerHTML = '<option value="">全部负责人</option><option value="__unassigned__">未分配</option>' + state.people.map((person) =>
+    `<option value="${escapeAttr(person.id)}">${escapeHtml(person.name)}</option>`,
+  ).join("");
+  if (state.kanbanOwnerId === "__unassigned__" || state.people.some((item) => item.id === state.kanbanOwnerId)) ownerSelect.value = state.kanbanOwnerId;
+  else state.kanbanOwnerId = "";
+
+  const allTasks = allKanbanTasks();
+  const tasks = allTasks.filter(({ workflow, task }) => {
+    if (state.kanbanMilestoneId && workflow.milestoneId !== state.kanbanMilestoneId) return false;
+    if (state.kanbanOwnerId === "__unassigned__" && task.ownerId) return false;
+    if (state.kanbanOwnerId && state.kanbanOwnerId !== "__unassigned__" && task.ownerId !== state.kanbanOwnerId) return false;
+    return true;
+  });
+  const completed = tasks.filter(({ task }) => normalizedTaskStatus(task.status) === "completed").length;
+  document.getElementById("kanban-summary").innerHTML = `<strong>${tasks.length}</strong> 个任务 · <strong>${completed}</strong> 已完成`;
+  document.getElementById("nav-kanban-count").textContent = String(allTasks.filter(({ task }) => normalizedTaskStatus(task.status) !== "completed").length);
+
+  document.getElementById("kanban-board").innerHTML = kanbanColumns.map((column) => {
+    const columnTasks = tasks.filter(({ task }) => normalizedTaskStatus(task.status) === column.status);
+    return `
+      <section class="kanban-column ${column.tone}" data-kanban-column="${column.status}">
+        <header><div><span class="kanban-status-dot"></span><h3>${column.label}</h3><b>${columnTasks.length}</b></div><small>${column.hint}</small></header>
+        <div class="kanban-column-body">
+          ${columnTasks.length ? columnTasks.map(renderKanbanCard).join("") : '<div class="kanban-column-empty">拖动任务到这里</div>'}
+        </div>
+      </section>`;
+  }).join("");
+}
+
+function renderKanbanCard({ workflow, task, milestone, product, owner }) {
+  const status = normalizedTaskStatus(task.status);
+  const agent = owner?.agents?.find((item) => item.id === task.agentId);
+  return `
+    <article class="kanban-card" draggable="true" data-kanban-card data-workflow-id="${escapeAttr(workflow.id)}" data-task-id="${escapeAttr(task.id)}">
+      <div class="kanban-card-meta"><span class="task-stage ${escapeAttr(task.stage)}">${escapeHtml(workflowStageLabel(task.stage))}</span><span>${escapeHtml(task.id)}</span></div>
+      <h4>${escapeHtml(task.title)}</h4>
+      <button class="kanban-requirement" type="button" data-kanban-open="${escapeAttr(workflow.id)}" title="查看需求">${escapeHtml(workflow.title)}</button>
+      <div class="kanban-card-scope"><span>${escapeHtml(product?.name || workflow.productId)}</span><span>${escapeHtml(milestone?.title || "未归属版本")}</span></div>
+      <div class="kanban-card-footer">
+        <div class="kanban-owner"><span>${owner ? escapeHtml(owner.name.slice(0, 1)) : "?"}</span><div><strong>${owner ? escapeHtml(owner.name) : "未分配"}</strong><small>${agent ? escapeHtml(agent.name) : owner ? "人工负责" : "等待分配"}</small></div></div>
+        <select data-kanban-status data-workflow-id="${escapeAttr(workflow.id)}" data-task-id="${escapeAttr(task.id)}" aria-label="更新 ${escapeAttr(task.title)} 的状态">
+          ${kanbanColumns.map((column) => `<option value="${column.status}" ${column.status === status ? "selected" : ""}>${column.label}</option>`).join("")}
+        </select>
+      </div>
+    </article>`;
+}
+
+function beginKanbanDrag(event) {
+  const card = event.target.closest("[data-kanban-card]");
+  if (!card) return;
+  state.draggedKanbanTask = { workflowId: card.dataset.workflowId, taskId: card.dataset.taskId };
+  card.classList.add("is-dragging");
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", `${card.dataset.workflowId}::${card.dataset.taskId}`);
+  }
+}
+
+function endKanbanDrag(event) {
+  event.target.closest("[data-kanban-card]")?.classList.remove("is-dragging");
+  document.querySelectorAll(".kanban-column.is-drop-target").forEach((column) => column.classList.remove("is-drop-target"));
+  state.draggedKanbanTask = null;
+}
+
+function allowKanbanDrop(event) {
+  const column = event.target.closest("[data-kanban-column]");
+  if (!column || !state.draggedKanbanTask) return;
+  event.preventDefault();
+  if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+  document.querySelectorAll(".kanban-column.is-drop-target").forEach((item) => item.classList.toggle("is-drop-target", item === column));
+}
+
+function leaveKanbanDrop(event) {
+  const column = event.target.closest("[data-kanban-column]");
+  if (column && !column.contains(event.relatedTarget)) column.classList.remove("is-drop-target");
+}
+
+function dropKanbanTask(event) {
+  const column = event.target.closest("[data-kanban-column]");
+  if (!column || !state.draggedKanbanTask) return;
+  event.preventDefault();
+  const { workflowId, taskId } = state.draggedKanbanTask;
+  column.classList.remove("is-drop-target");
+  updateKanbanTaskStatus(workflowId, taskId, column.dataset.kanbanColumn, column);
+}
+
+async function updateKanbanTaskStatus(workflowId, taskId, status, control) {
+  const workflow = state.workflows.find((item) => item.id === workflowId);
+  const task = workflow?.taskItems?.find((item) => item.id === taskId);
+  if (!task || normalizedTaskStatus(task.status) === status) return;
+  control?.classList?.add("is-updating");
+  if ("disabled" in (control || {})) control.disabled = true;
+  try {
+    const result = await api("/api/workflows/task-status", {
+      method: "POST",
+      body: JSON.stringify({ workflowId, taskId, status }),
+    });
+    state.workflows = state.workflows.map((item) => item.id === workflowId ? result.workflow : item);
+    renderWorkflows();
+    renderKanban();
+    renderGroupChats();
+    showToast(`任务已移至“${taskStatusLabel(status)}”`);
+  } catch (error) {
+    showToast(error.message, true);
+    await refreshWorkflows();
+  }
+}
+
+function openKanbanWorkflow(workflowId) {
+  switchView("workflow");
+  setTimeout(() => document.getElementById(`workflow-${workflowId}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
+}
+
 function renderVersionCard(version) {
   const product = state.overview.products.find((item) => item.id === version.productId);
   const requirements = state.workflows.filter((workflow) => workflow.milestoneId === version.id);
@@ -465,7 +640,7 @@ function renderWorkflowCard(workflow) {
     <section class="workflow-document ${kind}"><span>${label}</span><pre>${escapeHtml(content)}</pre></section>
   `).join("");
   return `
-    <article class="workflow-card">
+    <article class="workflow-card" id="workflow-${escapeAttr(workflow.id)}">
       <header class="workflow-card-header">
         <div><span class="panel-kicker">${escapeHtml(product?.name || workflow.productId)}</span><h3>${escapeHtml(workflow.title)}</h3><p>${escapeHtml(workflow.providerId)} · 更新于 ${escapeHtml(formatRelative(workflow.updatedAt))}</p></div>
         <span class="badge neutral">${escapeHtml(workflowStageLabel(workflow.stage))}</span>
@@ -548,7 +723,7 @@ function taskRole(stage) {
 }
 
 function taskStatusLabel(status) {
-  return ({ pending: "待处理", in_progress: "进行中", completed: "已完成", failed: "失败" })[status] || status;
+  return ({ pending: "待处理", in_progress: "进行中", blocked: "已阻塞", completed: "已完成", failed: "失败" })[status] || status;
 }
 
 function renderProductCard(product) {
@@ -746,7 +921,9 @@ function renderGroupChatTaskOptions() {
 
 function renderGroupChatMentionOptions(members) {
   const target = document.getElementById("group-chat-mention-options");
-  target.innerHTML = '<span>快捷 @</span>' + members.map((person) => {
+  const availableAgentCount = members.filter((person) => person.agents?.[0]?.skillIds?.includes("team_chat")).length;
+  const everyoneOption = `<button type="button" class="mention-everyone" data-mention-person="所有人" ${availableAgentCount ? "" : "disabled"} title="${escapeAttr(availableAgentCount ? `通知全部群成员，${availableAgentCount} 个 Agent 将结合群聊上下文回答` : "群内尚无可回答的 Agent")}">@所有人</button>`;
+  target.innerHTML = '<span>快捷 @</span>' + everyoneOption + members.map((person) => {
     const agent = person.agents?.[0];
     const available = Boolean(agent?.skillIds?.includes("team_chat"));
     return `<button type="button" data-mention-person="${escapeAttr(person.name)}" ${available ? "" : "disabled"} title="${escapeAttr(available ? `${agent.name} 将结合群聊上下文回答` : "尚未配置可回答的 Agent")}">@${escapeHtml(person.name)}${available ? "" : "（无 Agent）"}</button>`;
@@ -764,7 +941,7 @@ function updateGroupChatComposer() {
   const activity = activitySelect.value;
   const message = document.getElementById("group-chat-message");
   message.placeholder = isAdministrator
-    ? "输入消息，例如：@测试1号 请确认本次回归范围"
+    ? "输入消息，例如：@所有人 请同步当前进度"
     : activity === "started"
     ? "可补充计划或预计完成时间；留空将自动发送“开始处理：任务名”"
     : activity === "completed" ? "可补充结果或验证结论；留空将自动发送“已完成：任务名”"
@@ -854,6 +1031,7 @@ async function sendGroupChatMessage(event) {
     document.getElementById("group-chat-message").value = "";
     renderGroupChats();
     renderWorkflows();
+    renderKanban();
     if (result.replyErrors?.length) showToast(`消息已发送；${result.replyErrors.map((item) => `${item.personName}：${item.error}`).join("；")}`, true);
     else showToast(result.repliedBy?.length ? `${result.repliedBy.join("、")} 的 Agent 已回答` : "群聊消息已发送");
   } catch (error) {
@@ -1218,6 +1396,7 @@ async function assignWorkflowTask(workflowId, taskId, ownerId, agentId, select) 
     });
     state.workflows = state.workflows.map((workflow) => workflow.id === workflowId ? result.workflow : workflow);
     renderWorkflows();
+    renderKanban();
     showToast(ownerId ? (agentId ? "负责人和执行 Agent 已更新" : "任务负责人已更新") : "已取消任务分配");
   } catch (error) {
     select.disabled = false;
@@ -1331,6 +1510,7 @@ async function refreshWorkflows() {
   state.milestones = payload.milestones || [];
   state.workflows = payload.workflows || [];
   renderWorkflows();
+  renderKanban();
   document.getElementById("nav-workflow-count").textContent = String(state.milestones.length);
 }
 
@@ -1346,6 +1526,7 @@ async function generateWorkflowContent(workflowId, action, button) {
     });
     state.workflows = state.workflows.map((item) => item.id === workflowId ? result.workflow : item);
     renderWorkflows();
+    renderKanban();
     showToast(action === "plan" ? "计划已生成" : "任务已拆分");
   } catch (error) {
     button.disabled = false;
@@ -1363,6 +1544,7 @@ async function advanceWorkflowStage(workflowId, stage, button) {
     });
     state.workflows = state.workflows.map((item) => item.id === workflowId ? result.workflow : item);
     renderWorkflows();
+    renderKanban();
     if (stage === "coding") openWorkflowInAgent(workflowId, "coding");
     else showToast(`工作流已进入${workflowStageLabel(stage)}阶段`);
   } catch (error) {
@@ -1902,6 +2084,7 @@ function actionName(action) {
     "web.agent-task": "页面 Agent 任务",
     "web.workflow-plan": "生成研发计划",
     "web.workflow-tasks": "拆分研发任务",
+    "web.task-status": "更新看板任务状态",
   };
   return names[action] || action || "未知操作";
 }

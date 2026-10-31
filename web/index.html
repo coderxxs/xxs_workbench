@@ -26,6 +26,9 @@
           <button class="nav-item" data-view-target="workflow">
             <span class="nav-icon">⇢</span><span>研发</span><span class="nav-count" id="nav-workflow-count">0</span>
           </button>
+          <button class="nav-item" data-view-target="kanban">
+            <span class="nav-icon">▦</span><span>看板</span><span class="nav-count" id="nav-kanban-count">0</span>
+          </button>
           <button class="nav-item" data-view-target="group-chat">
             <span class="nav-icon">◎</span><span>群聊</span><span class="nav-count" id="nav-group-chat-count">0</span>
           </button>
@@ -154,6 +157,22 @@
             <div class="workflow-list" id="workflow-list"><div class="empty-state">正在读取研发工作流…</div></div>
           </section>
 
+          <section class="view" data-view="kanban">
+            <div class="view-intro">
+              <div><span class="section-kicker dark">DELIVERY BOARD</span><p>以版本为范围管理全部研发任务，拖动卡片即可更新进度。</p></div>
+            </div>
+            <section class="panel kanban-shell">
+              <header class="kanban-toolbar">
+                <div class="kanban-filters">
+                  <label><span class="field-label">版本</span><select id="kanban-milestone-filter"><option value="">全部版本</option></select></label>
+                  <label><span class="field-label">负责人</span><select id="kanban-owner-filter"><option value="">全部负责人</option></select></label>
+                </div>
+                <div class="kanban-summary" id="kanban-summary">0 个任务</div>
+              </header>
+              <div class="kanban-board" id="kanban-board" aria-live="polite"><div class="empty-state">正在读取任务…</div></div>
+            </section>
+          </section>
+
           <section class="view" data-view="group-chat">
             <div class="view-intro">
               <div><span class="section-kicker dark">TEAM UPDATES</span><p>员工在开始任务、完成任务或需要确认时，向团队同步当前工作。</p></div>
@@ -175,7 +194,7 @@
                   </div>
                   <textarea id="group-chat-message" rows="3" placeholder="可补充进展、结果或需要确认的问题；开始/完成任务时可留空自动生成"></textarea>
                   <div class="group-chat-mention-options" id="group-chat-mention-options"></div>
-                  <div class="composer-footer"><div class="composer-meta"><span>管理员输入 @员工名 可让对应 Agent 回答</span><span>Enter 发送 · Shift + Enter 换行</span></div><button type="submit" class="send-button" id="group-chat-send">发送消息 <span>↑</span></button></div>
+                  <div class="composer-footer"><div class="composer-meta"><span>管理员输入 @员工名 或 @所有人 可让对应 Agent 回答</span><span>Enter 发送 · Shift + Enter 换行</span></div><button type="submit" class="send-button" id="group-chat-send">发送消息 <span>↑</span></button></div>
                 </form>
               </section>
             </div>

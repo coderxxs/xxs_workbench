@@ -12,7 +12,7 @@ import { runCaptured, runShellCaptured } from "./process";
 import { chat, runAgent } from "./providers";
 import { deleteSecretValue, migrateLegacySecretFile, providerApiKey, saveSecretValue, secretValueStatus } from "./secrets";
 import { currentUser } from "./session";
-import { AgentConfig, AgentToolPermission, AssigneeRole, DevelopmentMilestone, DevelopmentPerson, DevelopmentWorkflow, GroupChat, GroupChatActivity, PersonAgentProfile, ProductConfig, ProductDeployment, ProductEnvironment, ProjectConfig, TaskExecutionStage, WorkflowStage, WorkflowTaskItem } from "./types";
+import { AgentConfig, AgentToolPermission, AssigneeRole, DevelopmentMilestone, DevelopmentPerson, DevelopmentWorkflow, GroupChat, GroupChatActivity, PersonAgentProfile, ProductConfig, ProductDeployment, ProductEnvironment, ProjectConfig, TaskExecutionStage, TaskStatus, WorkflowStage, WorkflowTaskItem } from "./types";
 import { buildAgentTools, executeAgentTool } from "./workbench";
 import { createMilestone, createWorkflow, loadMilestones, loadWorkflows, parseWorkflowTaskItems, saveWorkflow } from "./workflows";
 import { PRODUCT_NAME, PRODUCT_VERSION } from "./version";
@@ -282,6 +282,7 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
       if (!sender || task.ownerId !== sender.id) throw new HttpError(409, "Employees can only post work updates for tasks assigned to them.");
       if (activity === "started") task.status = "in_progress";
       if (activity === "completed") task.status = "completed";
+      if (activity === "confirmation") task.status = "blocked";
     }
 
     const suppliedText = typeof body.text === "string" ? body.text.trim() : "";
@@ -440,6 +441,21 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
     else delete task.agentId;
     saveWorkflow(workflow);
     sendJson(response, 200, { ok: true, workflow });
+    return;
+  }
+  if (method === "POST" && url.pathname === "/api/workflows/task-status") {
+    const body = await readJsonBody(request);
+    const workflow = findWorkflow(requiredString(body.workflowId, "workflowId"));
+    const taskId = requiredString(body.taskId, "taskId");
+    const task = workflow.taskItems?.find((item) => item.id === taskId);
+    if (!task) throw new HttpError(404, `Unknown workflow task: ${taskId}`);
+    const status = requiredEnum(body.status, "status", ["pending", "in_progress", "blocked", "completed"] as const) as TaskStatus;
+    const previousStatus = task.status;
+    task.status = status;
+    saveWorkflow(workflow);
+    const runId = createRunId();
+    audit(runId, "completed", "web.task-status", { workflowId: workflow.id, taskId, from: previousStatus, to: status });
+    sendJson(response, 200, { ok: true, runId, workflow });
     return;
   }
   if (method === "POST" && url.pathname === "/api/workflows/stage") {
