@@ -175,13 +175,9 @@
           </section>
 
           <section class="view" data-view="group-chat">
-            <div class="view-intro">
-              <div><span class="section-kicker dark">TEAM UPDATES</span><p>员工在开始任务、完成任务或需要确认时，向团队同步当前工作。</p></div>
-              <button class="primary-button" id="add-group-chat">＋ 新建群聊</button>
-            </div>
             <div class="group-chat-layout">
               <aside class="panel group-chat-sidebar">
-                <div class="group-chat-sidebar-head"><span class="panel-kicker">CHANNELS</span><h3>群聊</h3></div>
+                <div class="group-chat-sidebar-head"><div><span class="panel-kicker">CHANNELS</span><h3>群聊</h3></div><button class="secondary-button" id="add-group-chat" title="新建群聊">＋ 新建</button></div>
                 <div class="group-chat-list" id="group-chat-list"><div class="empty-state">尚未新建群聊</div></div>
               </aside>
               <section class="panel group-chat-room">
@@ -193,7 +189,7 @@
                     <label><span class="field-label">动态类型</span><select id="group-chat-activity"><option value="started">开始处理</option><option value="completed">完成任务</option><option value="confirmation">需要确认</option><option value="message">普通消息</option></select></label>
                     <label><span class="field-label">关联任务</span><select id="group-chat-task"></select></label>
                   </div>
-                  <textarea id="group-chat-message" rows="3" placeholder="可补充进展、结果或需要确认的问题；开始/完成任务时可留空自动生成"></textarea>
+                  <textarea id="group-chat-message" rows="2" placeholder="输入消息，或使用 @员工名 / @所有人"></textarea>
                   <div class="group-chat-mention-options" id="group-chat-mention-options"></div>
                   <div class="composer-footer"><div class="composer-meta"><span>管理员输入 @员工名 或 @所有人 可让对应 Agent 回答</span><span>Enter 发送 · Shift + Enter 换行</span></div><button type="submit" class="send-button" id="group-chat-send">发送消息 <span>↑</span></button></div>
                 </form>
