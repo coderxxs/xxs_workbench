@@ -494,7 +494,10 @@ function personWorkstationInfo(person) {
 }
 
 function personWorkstationZone(person) {
-  const role = person.roles.find((item) => ["developer", "tester", "deployer", "releaser", "operator"].includes(item));
+  const supportedRoles = ["developer", "tester", "deployer", "releaser", "operator"];
+  const role = supportedRoles.includes(person.agents?.[0]?.role)
+    ? person.agents[0].role
+    : [...person.roles].reverse().find((item) => supportedRoles.includes(item));
   if (role === "tester") return "testing";
   if (role === "deployer" || role === "releaser") return "operations";
   if (role === "operator") return "content";
