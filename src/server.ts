@@ -4,6 +4,7 @@ import path from "path";
 import { audit, createRunId, readAudit } from "./audit";
 import { AGENT_PRESET_CATALOG, SKILL_CATALOG, skillInstruction, TOOL_CATALOG } from "./capabilities";
 import { configPath, detectProject, findAgentHome, initializeConfig, loadConfig, writeConfig } from "./config";
+import { ContentUploadInput, deleteContentItem, findContentMedia, loadContentItems, saveContentItem } from "./content";
 import { hasStoredConfig } from "./database";
 import { listLocalDirectories, suggestRepositoryId } from "./directory-browser";
 import { createGroupChat, loadGroupChats, mentionedGroupChatMemberIds, postGroupChatMessage } from "./group-chats";
@@ -116,6 +117,21 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
   }
   if (method === "GET" && url.pathname === "/api/workflows") {
     sendJson(response, 200, { ok: true, milestones: loadMilestones(), workflows: loadWorkflows() });
+    return;
+  }
+  if (method === "GET" && url.pathname === "/api/content-items") {
+    sendJson(response, 200, { ok: true, contentItems: loadContentItems().map(publicContentItem) });
+    return;
+  }
+  if (method === "GET" && url.pathname.startsWith("/api/content-media/")) {
+    const mediaId = requiredIdentifier(decodeURIComponent(url.pathname.slice("/api/content-media/".length)), "mediaId");
+    const found = findContentMedia(mediaId);
+    if (!found) throw new HttpError(404, `Unknown content media: ${mediaId}`);
+    response.statusCode = 200;
+    response.setHeader("Content-Type", found.media.mimeType);
+    response.setHeader("Content-Length", String(fs.statSync(found.file).size));
+    response.setHeader("Content-Disposition", `inline; filename*=UTF-8''${encodeURIComponent(found.media.name)}`);
+    response.end(fs.readFileSync(found.file));
     return;
   }
   if (method === "GET" && url.pathname === "/api/people") {
@@ -260,6 +276,37 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
       environmentIds,
     });
     sendJson(response, 200, { ok: true, person: updated });
+    return;
+  }
+  if (method === "POST" && url.pathname === "/api/content-items") {
+    const body = await readJsonBody(request, 64 * 1024 * 1024);
+    const authorPersonId = typeof body.authorPersonId === "string" && body.authorPersonId
+      ? requiredIdentifier(body.authorPersonId, "authorPersonId")
+      : undefined;
+    if (authorPersonId && !loadPeople().some((person) => person.id === authorPersonId)) {
+      throw new HttpError(404, `Unknown content author: ${authorPersonId}`);
+    }
+    const item = saveContentItem({
+      id: typeof body.id === "string" && body.id ? requiredIdentifier(body.id, "id") : undefined,
+      title: requiredString(body.title, "title"),
+      type: requiredEnum(body.type, "type", ["official_account", "short_video", "general"] as const),
+      status: requiredEnum(body.status, "status", ["draft", "review", "published"] as const),
+      body: requiredString(body.body, "body"),
+      authorPersonId,
+      mediaIds: requiredStringArray(body.mediaIds ?? [], "mediaIds").map((id) => requiredIdentifier(id, "mediaId")),
+      uploads: normalizeContentUploads(body.uploads),
+    });
+    const runId = createRunId();
+    audit(runId, "completed", "web.content-save", { contentId: item.id, type: item.type, status: item.status, mediaCount: item.media.length });
+    sendJson(response, 200, { ok: true, contentItem: publicContentItem(item) });
+    return;
+  }
+  if (method === "POST" && url.pathname === "/api/content-items/delete") {
+    const body = await readJsonBody(request);
+    const item = deleteContentItem(requiredIdentifier(body.id, "id"));
+    const runId = createRunId();
+    audit(runId, "completed", "web.content-delete", { contentId: item.id, title: item.title, mediaCount: item.media.length });
+    sendJson(response, 200, { ok: true, deletedId: item.id });
     return;
   }
   if (method === "POST" && url.pathname === "/api/group-chats") {
@@ -1021,13 +1068,13 @@ function validateWriteRequest(request: IncomingMessage): void {
   }
 }
 
-function readJsonBody(request: IncomingMessage): Promise<Record<string, unknown>> {
+function readJsonBody(request: IncomingMessage, maxBytes = 1024 * 1024): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
     let body = "";
     request.setEncoding("utf8");
     request.on("data", (chunk: string) => {
       body += chunk;
-      if (body.length > 1024 * 1024) request.destroy(new Error("Request body is too large."));
+      if (Buffer.byteLength(body, "utf8") > maxBytes) request.destroy(new Error("Request body is too large."));
     });
     request.on("error", reject);
     request.on("end", () => {
@@ -1039,6 +1086,33 @@ function readJsonBody(request: IncomingMessage): Promise<Record<string, unknown>
         reject(new HttpError(400, `Invalid JSON body: ${messageOf(error)}`));
       }
     });
+  });
+}
+
+function publicContentItem(item: ReturnType<typeof loadContentItems>[number]): Record<string, unknown> {
+  return {
+    ...item,
+    media: item.media.map((media) => ({
+      id: media.id,
+      name: media.name,
+      mimeType: media.mimeType,
+      size: media.size,
+      createdAt: media.createdAt,
+      url: `/api/content-media/${encodeURIComponent(media.id)}`,
+    })),
+  };
+}
+
+function normalizeContentUploads(value: unknown): ContentUploadInput[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) throw new HttpError(400, "uploads must be an array.");
+  return value.map((upload, index) => {
+    if (!isRecord(upload)) throw new HttpError(400, `uploads[${index}] must be an object.`);
+    return {
+      name: requiredString(upload.name, `uploads[${index}].name`),
+      mimeType: requiredString(upload.mimeType, `uploads[${index}].mimeType`),
+      dataBase64: requiredString(upload.dataBase64, `uploads[${index}].dataBase64`),
+    };
   });
 }
 

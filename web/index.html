@@ -32,6 +32,9 @@
           <button class="nav-item" data-view-target="group-chat">
             <span class="nav-icon">◎</span><span>群聊</span><span class="nav-count" id="nav-group-chat-count">0</span>
           </button>
+          <button class="nav-item" data-view-target="content">
+            <span class="nav-icon">▤</span><span>内容中心</span><span class="nav-count" id="nav-content-count">0</span>
+          </button>
           <button class="nav-item" data-view-target="agent">
             <span class="nav-icon">✦</span><span>Agent控制台</span>
           </button>
@@ -201,6 +204,17 @@
                 </form>
               </section>
             </div>
+          </section>
+
+          <section class="view" data-view="content">
+            <div class="content-center-toolbar">
+              <div class="content-center-filters">
+                <label><span class="field-label">内容类型</span><select id="content-type-filter"><option value="">全部类型</option><option value="official_account">公众号文章</option><option value="short_video">短视频脚本</option><option value="general">通用内容</option></select></label>
+                <label><span class="field-label">状态</span><select id="content-status-filter"><option value="">全部状态</option><option value="draft">草稿</option><option value="review">审核中</option><option value="published">已发布</option></select></label>
+              </div>
+              <button class="primary-button" id="add-content-item">＋ 新建内容</button>
+            </div>
+            <div class="content-card-grid" id="content-card-grid"><div class="empty-state">正在读取内容…</div></div>
           </section>
 
           <section class="view" data-view="agent">
@@ -424,6 +438,30 @@
             <div class="full-field"><span class="field-label">群成员（至少两人）</span><div class="capability-grid compact" id="group-chat-member-options"></div></div>
           </div>
           <div class="modal-footer"><button type="button" class="secondary-button" id="group-chat-modal-cancel">取消</button><button type="submit" class="primary-button" id="group-chat-create">创建群聊</button></div>
+        </form>
+      </section>
+    </div>
+
+    <div class="modal-backdrop" id="content-modal" hidden>
+      <section class="modal product-modal content-modal" role="dialog" aria-modal="true" aria-labelledby="content-modal-title">
+        <div class="modal-header"><div><span class="panel-kicker" id="content-modal-kicker">NEW CONTENT</span><h2 id="content-modal-title">新建内容</h2></div><button class="icon-button subtle" id="content-modal-close" aria-label="关闭内容编辑器">×</button></div>
+        <form id="content-form" class="product-form">
+          <input id="content-id" type="hidden" />
+          <div class="modal-body">
+            <div class="form-grid two-columns">
+              <label class="full-field"><span class="field-label">标题</span><input id="content-title" required placeholder="例如：小小生开发工作台使用指南" /></label>
+              <label><span class="field-label">内容类型</span><select id="content-type" required><option value="official_account">公众号文章</option><option value="short_video">短视频脚本</option><option value="general">通用内容</option></select></label>
+              <label><span class="field-label">状态</span><select id="content-status" required><option value="draft">草稿</option><option value="review">审核中</option><option value="published">已发布</option></select></label>
+              <label class="full-field"><span class="field-label">负责人</span><select id="content-author"><option value="">未指定</option></select></label>
+            </div>
+            <label class="full-field"><span class="field-label">正文 / 脚本</span><textarea id="content-body" rows="14" required placeholder="支持直接粘贴 Agent 生成的公众号文章、分镜脚本或其他运营内容"></textarea></label>
+            <div class="content-media-editor">
+              <div class="editor-section-head"><div><span class="panel-kicker">MEDIA</span><h3>图片素材</h3></div><small>PNG、JPG、WebP、GIF；单张不超过 5 MB</small></div>
+              <input id="content-media-files" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple />
+              <div class="content-media-preview" id="content-media-preview"><div class="capability-empty">尚未添加图片</div></div>
+            </div>
+          </div>
+          <div class="modal-footer"><button type="button" class="secondary-button" id="content-modal-cancel">取消</button><button type="submit" class="primary-button" id="content-save">保存内容</button></div>
         </form>
       </section>
     </div>

@@ -102,6 +102,29 @@ export interface DevelopmentPerson {
 
 export type GroupChatActivity = "message" | "started" | "completed" | "confirmation";
 export type GroupChatSenderType = "administrator" | "person" | "agent";
+export type ContentType = "official_account" | "short_video" | "general";
+export type ContentStatus = "draft" | "review" | "published";
+
+export interface ContentMedia {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  storedName: string;
+  createdAt: string;
+}
+
+export interface ContentItem {
+  id: string;
+  title: string;
+  type: ContentType;
+  status: ContentStatus;
+  body: string;
+  authorPersonId?: string;
+  media: ContentMedia[];
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface GroupChatMessage {
   id: string;

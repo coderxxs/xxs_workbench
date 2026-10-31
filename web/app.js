@@ -10,6 +10,11 @@ const state = {
   agentTools: [],
   agentPresets: [],
   groupChats: [],
+  contentItems: [],
+  contentTypeFilter: "",
+  contentStatusFilter: "",
+  contentDraftUploads: [],
+  contentRetainedMediaIds: [],
   activeGroupChatId: null,
   kanbanProductId: "",
   kanbanMilestoneId: "",
@@ -32,6 +37,7 @@ const viewMeta = {
   workflow: ["DELIVERY", "任务"],
   kanban: ["BOARD", "研发任务看板"],
   "group-chat": ["TEAM", "团队群聊"],
+  content: ["CONTENT", "内容中心"],
   projects: ["CONFIG", "配置中心"],
   agent: ["AGENT CONSOLE", "Agent控制台"],
   runs: ["AUDIT", "运行记录"],
@@ -88,7 +94,7 @@ async function api(path, options = {}) {
 async function loadDashboard() {
   setRefreshState(true);
   try {
-    const [session, overview, doctor, runs, settings, workflows, people, groupChats] = await Promise.all([
+    const [session, overview, doctor, runs, settings, workflows, people, groupChats, content] = await Promise.all([
       api("/api/session"),
       api("/api/overview"),
       api("/api/doctor"),
@@ -97,6 +103,7 @@ async function loadDashboard() {
       api("/api/workflows"),
       api("/api/people"),
       api("/api/group-chats"),
+      api("/api/content-items"),
     ]);
     state.currentUser = session.user;
     state.overview = overview;
@@ -110,6 +117,7 @@ async function loadDashboard() {
     state.agentTools = people.tools || [];
     state.agentPresets = people.presets || [];
     state.groupChats = groupChats.groupChats || [];
+    state.contentItems = content.contentItems || [];
     renderAll();
     document.getElementById("last-updated").textContent = `刚刚同步 · ${formatClock(new Date())}`;
   } catch (error) {
@@ -133,6 +141,7 @@ function renderAll() {
   renderRuns();
   renderAgentOptions();
   renderGroupChats();
+  renderContentItems();
   renderSettings();
   document.getElementById("nav-project-count").textContent = "3";
   document.getElementById("nav-person-count").textContent = String(state.people.length);
@@ -141,6 +150,7 @@ function renderAll() {
   document.getElementById("nav-workflow-count").textContent = String(state.milestones.length);
   document.getElementById("nav-kanban-count").textContent = String(allKanbanTasks().filter(({ task }) => normalizedTaskStatus(task.status) !== "completed").length);
   document.getElementById("nav-group-chat-count").textContent = String(state.groupChats.length);
+  document.getElementById("nav-content-count").textContent = String(state.contentItems.length);
 }
 
 function renderCurrentUser() {
@@ -286,6 +296,39 @@ function bindActions() {
       document.getElementById("group-chat-form").requestSubmit();
     }
   });
+  document.getElementById("add-content-item").addEventListener("click", () => openContentModal());
+  document.getElementById("content-type-filter").addEventListener("change", (event) => {
+    state.contentTypeFilter = event.target.value;
+    renderContentItems();
+  });
+  document.getElementById("content-status-filter").addEventListener("change", (event) => {
+    state.contentStatusFilter = event.target.value;
+    renderContentItems();
+  });
+  document.getElementById("content-form").addEventListener("submit", saveContentCenterItem);
+  document.getElementById("content-modal-close").addEventListener("click", closeContentModal);
+  document.getElementById("content-modal-cancel").addEventListener("click", closeContentModal);
+  document.getElementById("content-media-files").addEventListener("change", addContentMediaFiles);
+  document.getElementById("content-card-grid").addEventListener("click", (event) => {
+    const edit = event.target.closest("[data-edit-content]");
+    if (edit) openContentModal(edit.dataset.editContent);
+    const remove = event.target.closest("[data-delete-content]");
+    if (remove) deleteContentCenterItem(remove.dataset.deleteContent, remove);
+  });
+  document.getElementById("content-media-preview").addEventListener("click", (event) => {
+    const existing = event.target.closest("[data-remove-content-media]");
+    if (existing) {
+      state.contentRetainedMediaIds = state.contentRetainedMediaIds.filter((id) => id !== existing.dataset.removeContentMedia);
+      renderContentMediaPreview();
+    }
+    const pending = event.target.closest("[data-remove-pending-media]");
+    if (pending) {
+      const index = Number(pending.dataset.removePendingMedia);
+      const [removed] = state.contentDraftUploads.splice(index, 1);
+      if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl);
+      renderContentMediaPreview();
+    }
+  });
   document.getElementById("agent-profile").addEventListener("change", applyAgentProfile);
   document.getElementById("add-milestone").addEventListener("click", openMilestoneModal);
   document.getElementById("milestone-form").addEventListener("submit", createDevelopmentMilestone);
@@ -354,6 +397,11 @@ function bindActions() {
     if (editPerson) openPersonModal(editPerson.dataset.editPerson);
     const deletePerson = event.target.closest("[data-delete-person]");
     if (deletePerson) deleteDevelopmentPerson(deletePerson.dataset.deletePerson, deletePerson);
+    const saveAgentContent = event.target.closest("[data-save-agent-content]");
+    if (saveAgentContent) {
+      const message = saveAgentContent.closest(".message")?.querySelector(".message-body p")?.textContent || "";
+      openContentModal(undefined, contentSeedFromAgent(message));
+    }
   });
   document.getElementById("product-repository-options").addEventListener("change", syncProductRepositories);
   document.getElementById("environment-editor").addEventListener("input", syncEnvironmentDraft);
@@ -390,6 +438,9 @@ function bindActions() {
   document.getElementById("person-agent-modal").addEventListener("click", (event) => {
     if (event.target.id === "person-agent-modal") closePersonAgentModal();
   });
+  document.getElementById("content-modal").addEventListener("click", (event) => {
+    if (event.target.id === "content-modal") closeContentModal();
+  });
   document.getElementById("group-chat-modal").addEventListener("click", (event) => {
     if (event.target.id === "group-chat-modal") closeGroupChatModal();
   });
@@ -401,6 +452,7 @@ function bindActions() {
     if (event.key === "Escape" && !document.getElementById("person-modal").hidden) closePersonModal();
     if (event.key === "Escape" && !document.getElementById("person-agent-modal").hidden) closePersonAgentModal();
     if (event.key === "Escape" && !document.getElementById("group-chat-modal").hidden) closeGroupChatModal();
+    if (event.key === "Escape" && !document.getElementById("content-modal").hidden) closeContentModal();
   });
 }
 
@@ -974,6 +1026,189 @@ function renderRuns() {
       <td class="detail-text" title="${escapeAttr(detailSummary(run.details, false))}">${escapeHtml(detailSummary(run.details, false))}</td>
     </tr>
   `).join("");
+}
+
+function renderContentItems() {
+  const target = document.getElementById("content-card-grid");
+  const items = state.contentItems.filter((item) =>
+    (!state.contentTypeFilter || item.type === state.contentTypeFilter) &&
+    (!state.contentStatusFilter || item.status === state.contentStatusFilter));
+  if (!items.length) {
+    target.innerHTML = `<div class="empty-state">${state.contentItems.length ? "没有符合筛选条件的内容。" : "尚未保存内容，可新建内容或从 Agent 控制台一键保存。"}</div>`;
+    return;
+  }
+  target.innerHTML = items.map((item) => {
+    const author = state.people.find((person) => person.id === item.authorPersonId);
+    const preview = item.body.replace(/\s+/g, " ").slice(0, 180);
+    return `
+      <article class="content-card">
+        <div class="content-card-cover ${item.media.length ? "has-media" : ""}">
+          ${item.media.length ? `<img src="${escapeAttr(item.media[0].url)}" alt="${escapeAttr(item.media[0].name)}" />` : `<span>${escapeHtml(contentTypeIcon(item.type))}</span>`}
+          <span class="content-status ${escapeAttr(item.status)}">${escapeHtml(contentStatusLabel(item.status))}</span>
+        </div>
+        <div class="content-card-body">
+          <div class="content-card-type">${escapeHtml(contentTypeLabel(item.type))}</div>
+          <h3>${escapeHtml(item.title)}</h3>
+          <p>${escapeHtml(preview)}${item.body.length > preview.length ? "…" : ""}</p>
+          <div class="content-card-meta"><span>${escapeHtml(author?.name || "未指定负责人")}</span><span>${item.media.length} 张图片</span><time>${escapeHtml(formatRelative(item.updatedAt))}</time></div>
+        </div>
+        <footer class="content-card-actions"><button type="button" data-edit-content="${escapeAttr(item.id)}">编辑</button><button type="button" class="danger" data-delete-content="${escapeAttr(item.id)}">删除</button></footer>
+      </article>`;
+  }).join("");
+}
+
+function contentTypeLabel(type) {
+  return ({ official_account: "公众号文章", short_video: "短视频脚本", general: "通用内容" })[type] || type;
+}
+
+function contentTypeIcon(type) {
+  return ({ official_account: "文", short_video: "▶", general: "稿" })[type] || "稿";
+}
+
+function contentStatusLabel(status) {
+  return ({ draft: "草稿", review: "审核中", published: "已发布" })[status] || status;
+}
+
+function contentSeedFromAgent(body) {
+  const agentId = document.getElementById("agent-profile").value;
+  const author = state.people.find((person) => person.agents.some((agent) => agent.id === agentId));
+  const firstLine = body.split(/\r?\n/).map((line) => line.replace(/^#+\s*/, "").trim()).find(Boolean) || "Agent 内容草稿";
+  const type = /短视频|抖音|分镜|口播|镜头/.test(body) ? "short_video" : "official_account";
+  return { title: firstLine.slice(0, 80), body, type, authorPersonId: author?.id };
+}
+
+function openContentModal(contentId, seed = {}) {
+  const item = contentId ? state.contentItems.find((value) => value.id === contentId) : undefined;
+  const authorSelect = document.getElementById("content-author");
+  const orderedPeople = [...state.people].sort((left, right) => Number(right.roles.includes("operator")) - Number(left.roles.includes("operator")));
+  authorSelect.innerHTML = `<option value="">未指定</option>${orderedPeople.map((person) => `<option value="${escapeAttr(person.id)}">${escapeHtml(person.name)} · ${escapeHtml(person.roles.map(assigneeRoleLabel).join(" / "))}</option>`).join("")}`;
+  document.getElementById("content-id").value = item?.id || "";
+  document.getElementById("content-title").value = item?.title || seed.title || "";
+  document.getElementById("content-type").value = item?.type || seed.type || "official_account";
+  document.getElementById("content-status").value = item?.status || "draft";
+  document.getElementById("content-body").value = item?.body || seed.body || "";
+  authorSelect.value = item?.authorPersonId || seed.authorPersonId || "";
+  document.getElementById("content-media-files").value = "";
+  state.contentDraftUploads.forEach((upload) => URL.revokeObjectURL(upload.previewUrl));
+  state.contentDraftUploads = [];
+  state.contentRetainedMediaIds = item?.media.map((media) => media.id) || [];
+  document.getElementById("content-modal-kicker").textContent = item ? "EDIT CONTENT" : "NEW CONTENT";
+  document.getElementById("content-modal-title").textContent = item ? `编辑 ${item.title}` : "新建内容";
+  renderContentMediaPreview();
+  document.getElementById("content-modal").hidden = false;
+  setTimeout(() => document.getElementById("content-title").focus(), 50);
+}
+
+function closeContentModal() {
+  state.contentDraftUploads.forEach((upload) => URL.revokeObjectURL(upload.previewUrl));
+  state.contentDraftUploads = [];
+  state.contentRetainedMediaIds = [];
+  document.getElementById("content-modal").hidden = true;
+}
+
+function addContentMediaFiles(event) {
+  const allowed = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
+  for (const file of Array.from(event.target.files || [])) {
+    if (!allowed.has(file.type)) {
+      showToast(`${file.name} 不是支持的图片格式`, true);
+      continue;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast(`${file.name} 超过 5 MB`, true);
+      continue;
+    }
+    if (state.contentRetainedMediaIds.length + state.contentDraftUploads.length >= 8) {
+      showToast("每条内容最多保存 8 张图片", true);
+      break;
+    }
+    state.contentDraftUploads.push({ file, previewUrl: URL.createObjectURL(file) });
+  }
+  event.target.value = "";
+  renderContentMediaPreview();
+}
+
+function renderContentMediaPreview() {
+  const target = document.getElementById("content-media-preview");
+  const item = state.contentItems.find((value) => value.id === document.getElementById("content-id").value);
+  const existing = (item?.media || []).filter((media) => state.contentRetainedMediaIds.includes(media.id)).map((media) => `
+    <article class="content-media-tile"><img src="${escapeAttr(media.url)}" alt="${escapeAttr(media.name)}" /><span>${escapeHtml(media.name)}</span><button type="button" data-remove-content-media="${escapeAttr(media.id)}" aria-label="移除 ${escapeAttr(media.name)}">×</button></article>`);
+  const pending = state.contentDraftUploads.map((upload, index) => `
+    <article class="content-media-tile is-pending"><img src="${escapeAttr(upload.previewUrl)}" alt="${escapeAttr(upload.file.name)}" /><span>${escapeHtml(upload.file.name)}</span><button type="button" data-remove-pending-media="${index}" aria-label="移除 ${escapeAttr(upload.file.name)}">×</button></article>`);
+  target.innerHTML = existing.length || pending.length ? [...existing, ...pending].join("") : '<div class="capability-empty">尚未添加图片</div>';
+}
+
+async function fileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error(`无法读取图片：${file.name}`));
+    reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+    reader.readAsDataURL(file);
+  });
+}
+
+async function saveContentCenterItem(event) {
+  event.preventDefault();
+  const button = document.getElementById("content-save");
+  button.disabled = true;
+  button.textContent = "保存中…";
+  try {
+    const uploads = await Promise.all(state.contentDraftUploads.map(async ({ file }) => ({
+      name: file.name,
+      mimeType: file.type,
+      dataBase64: await fileAsBase64(file),
+    })));
+    const id = document.getElementById("content-id").value;
+    const result = await api("/api/content-items", {
+      method: "POST",
+      body: JSON.stringify({
+        id: id || undefined,
+        title: document.getElementById("content-title").value.trim(),
+        type: document.getElementById("content-type").value,
+        status: document.getElementById("content-status").value,
+        authorPersonId: document.getElementById("content-author").value || undefined,
+        body: document.getElementById("content-body").value.trim(),
+        mediaIds: state.contentRetainedMediaIds,
+        uploads,
+      }),
+    });
+    state.contentItems = id
+      ? state.contentItems.map((item) => item.id === result.contentItem.id ? result.contentItem : item)
+      : [result.contentItem, ...state.contentItems];
+    document.getElementById("nav-content-count").textContent = String(state.contentItems.length);
+    renderContentItems();
+    closeContentModal();
+    showToast(id ? "内容已更新" : "内容已保存到内容中心");
+  } catch (error) {
+    showToast(error.message, true);
+  } finally {
+    button.disabled = false;
+    button.textContent = "保存内容";
+  }
+}
+
+async function deleteContentCenterItem(contentId, button) {
+  const item = state.contentItems.find((value) => value.id === contentId);
+  if (!item) return;
+  const confirmed = await confirmAction({
+    kicker: "DELETE CONTENT",
+    title: `删除“${item.title}”？`,
+    message: "正文记录和关联图片文件将一起删除，且无法恢复。",
+    details: [`类型：${contentTypeLabel(item.type)}`, `状态：${contentStatusLabel(item.status)}`, `图片：${item.media.length} 张`],
+    confirmText: "删除内容",
+    tone: "danger",
+  });
+  if (!confirmed) return;
+  button.disabled = true;
+  try {
+    await api("/api/content-items/delete", { method: "POST", body: JSON.stringify({ id: contentId }) });
+    state.contentItems = state.contentItems.filter((value) => value.id !== contentId);
+    document.getElementById("nav-content-count").textContent = String(state.contentItems.length);
+    renderContentItems();
+    showToast("内容及关联图片已删除");
+  } catch (error) {
+    button.disabled = false;
+    showToast(error.message, true);
+  }
 }
 
 function renderGroupChats() {
@@ -2238,6 +2473,12 @@ function appendMessage(role, text) {
   article.className = `message ${role === "user" ? "user-message" : "assistant-message"}`;
   article.innerHTML = `<div class="message-avatar">${role === "user" ? "我" : "✦"}</div><div class="message-body"><span class="message-author">${role === "user" ? "You" : "智能小助手"}</span><p></p></div>`;
   article.querySelector("p").textContent = text;
+  if (role === "assistant" && !text.startsWith("任务失败：")) {
+    const actions = document.createElement("div");
+    actions.className = "message-actions";
+    actions.innerHTML = '<button type="button" class="message-save-content" data-save-agent-content>保存到内容中心</button>';
+    article.querySelector(".message-body").appendChild(actions);
+  }
   container.appendChild(article);
   container.scrollTop = container.scrollHeight;
 }

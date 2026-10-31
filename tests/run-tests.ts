@@ -4,6 +4,7 @@ import path from "path";
 import { audit, readAudit } from "../src/audit";
 import { AGENT_PRESET_CATALOG, SKILL_CATALOG, TOOL_CATALOG } from "../src/capabilities";
 import { configPath, defaultConfig, detectProject, initializeConfig, loadConfig, writeConfig } from "../src/config";
+import { contentMediaRoot, deleteContentItem, findContentMedia, loadContentItems, saveContentItem } from "../src/content";
 import { databasePath, databaseStats } from "../src/database";
 import { listLocalDirectories, suggestRepositoryId } from "../src/directory-browser";
 import { createGroupChat, loadGroupChats, mentionedGroupChatMemberIds, postGroupChatMessage } from "../src/group-chats";
@@ -286,6 +287,40 @@ try {
       text: "@Developer 请确认实现范围",
     }, chatHome);
     assert.strictEqual(withAdministrator.messages[1].senderType, "administrator");
+  });
+
+  test("persists content drafts and image media", () => {
+    const contentHome = path.join(temporaryRoot, "content-home");
+    const created = saveContentItem({
+      title: "公众号首发稿",
+      type: "official_account",
+      status: "draft",
+      body: "这是一篇保存在内容中心的文章。",
+      authorPersonId: "person-operator",
+      mediaIds: [],
+      uploads: [{
+        name: "cover.png",
+        mimeType: "image/png",
+        dataBase64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+      }],
+    }, contentHome);
+    assert.strictEqual(loadContentItems(contentHome)[0].title, "公众号首发稿");
+    assert.strictEqual(created.media.length, 1);
+    assert.ok(fs.existsSync(findContentMedia(created.media[0].id, contentHome)?.file || ""));
+    const updated = saveContentItem({
+      id: created.id,
+      title: "公众号首发稿（已审）",
+      type: created.type,
+      status: "review",
+      body: created.body,
+      authorPersonId: created.authorPersonId,
+      mediaIds: [created.media[0].id],
+      uploads: [],
+    }, contentHome);
+    assert.strictEqual(updated.status, "review");
+    deleteContentItem(created.id, contentHome);
+    assert.strictEqual(loadContentItems(contentHome).length, 0);
+    assert.strictEqual(fs.readdirSync(contentMediaRoot(contentHome)).length, 0);
   });
 
   test("recognizes exact employee mentions inside a group chat", () => {

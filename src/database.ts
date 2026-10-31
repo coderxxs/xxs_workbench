@@ -3,7 +3,7 @@ import path from "path";
 import { spawnSync } from "child_process";
 import { AuditEvent } from "./types";
 
-export type SqliteCollection = "people" | "milestones" | "workflows" | "group_chats";
+export type SqliteCollection = "people" | "milestones" | "workflows" | "group_chats" | "content_items";
 
 const DATABASE_FILE = "dev-work-agent.sqlite";
 const initializedDatabases = new Set<string>();
@@ -90,6 +90,7 @@ function legacyImportPayload(home: string): Record<string, unknown> {
       milestones: readJsonFile(path.join(home, "milestones.json"), []),
       workflows: readJsonFile(path.join(home, "workflows.json"), []),
       group_chats: readJsonFile(path.join(home, "group-chats.json"), []),
+      content_items: readJsonFile(path.join(home, "content-items.json"), []),
     },
     auditEvents: readJsonLines(path.join(home, "runs.jsonl")),
   };

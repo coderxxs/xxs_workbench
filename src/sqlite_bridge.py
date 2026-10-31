@@ -9,6 +9,7 @@ COLLECTION_TABLES = {
     "milestones": "milestones",
     "workflows": "workflows",
     "group_chats": "group_chats",
+    "content_items": "content_items",
 }
 
 
@@ -47,6 +48,11 @@ def initialize(connection):
           data_json TEXT NOT NULL
         );
         CREATE TABLE IF NOT EXISTS group_chats (
+          id TEXT PRIMARY KEY,
+          position INTEGER NOT NULL,
+          data_json TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS content_items (
           id TEXT PRIMARY KEY,
           position INTEGER NOT NULL,
           data_json TEXT NOT NULL
