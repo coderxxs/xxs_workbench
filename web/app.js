@@ -913,7 +913,7 @@ function renderGroupChats() {
         <article class="group-chat-message ${escapeAttr(message.activity)} ${escapeAttr(message.senderType || "person")}">
           <span class="group-chat-avatar">${escapeHtml(message.senderName.slice(0, 1))}</span>
           <div class="group-chat-message-body">
-            <header><strong>${escapeHtml(message.senderName)}</strong><span class="group-chat-actor ${escapeAttr(message.senderType || "person")}">${escapeHtml(groupChatSenderLabel(message.senderType))}</span><span class="group-chat-activity ${escapeAttr(message.activity)}">${escapeHtml(groupChatActivityLabel(message.activity))}</span><time>${escapeHtml(formatRelative(message.createdAt))}</time></header>
+            <header><strong>${escapeHtml(message.senderName)}</strong><span class="group-chat-actor ${escapeAttr(message.senderType || "person")}">${escapeHtml(groupChatSenderLabel(message.senderType))}</span>${message.activity === "message" ? "" : `<span class="group-chat-activity ${escapeAttr(message.activity)}">${escapeHtml(groupChatActivityLabel(message.activity))}</span>`}<time>${escapeHtml(formatRelative(message.createdAt))}</time></header>
             ${message.taskTitle ? `<div class="group-chat-task-context"><span>${escapeHtml(message.workflowTitle || "研发任务")}</span><strong>${escapeHtml(message.taskId)} · ${escapeHtml(message.taskTitle)}</strong></div>` : ""}
             <p>${escapeHtml(message.text)}</p>
           </div>
@@ -1077,7 +1077,7 @@ function groupChatActivityLabel(activity) {
 }
 
 function groupChatSenderLabel(senderType) {
-  return ({ administrator: "管理员", agent: "Agent 回复", person: "员工" })[senderType || "person"] || "员工";
+  return ({ administrator: "管理员", agent: "Agent", person: "员工" })[senderType || "person"] || "员工";
 }
 
 function renderAgentOptions() {

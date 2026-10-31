@@ -458,18 +458,18 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .group-chat-header h3 { margin: 0; font-size: var(--type-small); line-height: 1.35; }
 .group-chat-header h3 span { color: var(--muted); font-weight: 550; }
 .group-chat-messages { display: flex; flex-direction: column; gap: 8px; min-height: 320px; max-height: calc(100vh - 360px); padding: 12px 14px; background: #fafbfc; overflow-y: auto; }
-.group-chat-message { display: grid; grid-template-columns: 38px minmax(0, 1fr); align-items: start; gap: 11px; }
-.group-chat-avatar { display: grid; place-items: center; width: 38px; height: 38px; color: #5143bd; background: #e9e6ff; border-radius: 11px; font-weight: 850; }
-.group-chat-message-body { min-width: 0; padding: 12px 14px; background: white; border: 1px solid #e6e9ec; border-radius: 4px 13px 13px; box-shadow: 0 5px 16px rgba(24, 32, 42, .04); }
-.group-chat-message-body header { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.group-chat-message { display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: start; gap: 8px; }
+.group-chat-avatar { display: grid; place-items: center; width: 30px; height: 30px; color: #5143bd; background: #e9e6ff; border-radius: 9px; font-size: var(--type-caption); font-weight: 850; }
+.group-chat-message-body { min-width: 0; padding: 8px 11px; background: white; border: 1px solid #e6e9ec; border-radius: 3px 10px 10px; box-shadow: 0 3px 10px rgba(24, 32, 42, .035); }
+.group-chat-message-body header { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-height: 22px; }
 .group-chat-message-body header strong { color: #34404d; font-size: var(--type-small); }
 .group-chat-message-body time { margin-left: auto; color: #939ba5; font-size: var(--type-caption); }
-.group-chat-message-body p { margin: 9px 0 0; color: #4d5865; font-size: var(--type-body); line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
-.group-chat-activity { padding: 3px 7px; color: #5e52bd; background: #eeecfc; border-radius: 999px; font-size: var(--type-caption); font-weight: 750; }
+.group-chat-message-body p { margin: 4px 0 0; color: #4d5865; font-size: var(--type-body); line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+.group-chat-activity { padding: 2px 6px; color: #5e52bd; background: #eeecfc; border-radius: 999px; font-size: var(--type-caption); font-weight: 750; line-height: 1.25; }
 .group-chat-activity.started { color: #2762a5; background: #e9f2ff; }
 .group-chat-activity.completed { color: #14735d; background: #e4f6f0; }
 .group-chat-activity.confirmation { color: #9a6517; background: #fff1d9; }
-.group-chat-task-context { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 9px; padding: 8px 10px; color: #697482; background: #f7f8fa; border-radius: 8px; font-size: var(--type-caption); }
+.group-chat-task-context { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 5px; padding: 6px 8px; color: #697482; background: #f7f8fa; border-radius: 7px; font-size: var(--type-caption); }
 .group-chat-task-context strong { color: #46515e; }
 .group-chat-composer { padding: 10px 14px; background: white; border-top: 1px solid var(--line); }
 .group-chat-composer[hidden] { display: none; }
@@ -485,7 +485,7 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .group-chat-mention-options button:hover:not(:disabled) { color: white; background: #6657d9; border-color: #6657d9; }
 .group-chat-mention-options button:disabled { color: #9da4ad; background: #f3f4f5; border-color: #e5e8eb; cursor: not-allowed; }
 .group-chat-composer .composer-footer { padding: 8px 0 0; }
-.group-chat-actor { padding: 3px 7px; color: #5b6572; background: #eef1f4; border-radius: 999px; font-size: var(--type-caption); font-weight: 750; }
+.group-chat-actor { padding: 2px 6px; color: #5b6572; background: #eef1f4; border-radius: 999px; font-size: var(--type-caption); font-weight: 750; line-height: 1.25; }
 .group-chat-actor.administrator { color: #684cb2; background: #eee8ff; }
 .group-chat-actor.agent { color: #08745f; background: #def6ef; }
 .group-chat-message.administrator .group-chat-avatar { color: #fff; background: #6657d9; }
