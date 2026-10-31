@@ -25,8 +25,8 @@ export interface AgentPresetDefinition {
 }
 
 export const SKILL_CATALOG: SkillDefinition[] = [
-  { id: "team_chat", name: "群聊协作", description: "阅读群聊上下文，以员工身份同步进展、回答问题并指出需要确认的事项。", roles: ["developer", "tester", "deployer", "releaser"] },
-  { id: "requirement_analysis", name: "需求分析", description: "澄清目标、边界、依赖和验收标准。", roles: ["developer", "tester"] },
+  { id: "team_chat", name: "群聊协作", description: "阅读群聊上下文，以员工身份同步进展、回答问题并指出需要确认的事项。", roles: ["developer", "tester", "deployer", "releaser", "operator"] },
+  { id: "requirement_analysis", name: "需求分析", description: "澄清目标、边界、依赖和验收标准。", roles: ["developer", "tester", "operator"] },
   { id: "implementation", name: "编码实现", description: "按计划修改代码，并保持变更范围可控。", roles: ["developer"] },
   { id: "code_review", name: "代码审查", description: "检查正确性、可维护性、安全性和回归风险。", roles: ["developer"] },
   { id: "unit_testing", name: "单元测试", description: "设计并执行单元测试，分析失败原因。", roles: ["developer", "tester"] },
@@ -34,6 +34,10 @@ export const SKILL_CATALOG: SkillDefinition[] = [
   { id: "deployment_check", name: "部署检查", description: "执行部署前检查、验证结果并准备回滚。", roles: ["deployer"] },
   { id: "release_governance", name: "发布治理", description: "核对版本、变更、审批、产物和发布结果。", roles: ["releaser"] },
   { id: "incident_diagnosis", name: "故障诊断", description: "结合日志、环境和代码状态定位异常。", roles: ["developer", "tester", "deployer"] },
+  { id: "content_planning", name: "内容策划", description: "根据产品定位、目标人群和传播目标制定选题、内容结构与发布节奏。", roles: ["operator"] },
+  { id: "official_account_writing", name: "公众号写作", description: "撰写包含标题、导语、正文结构、摘要和行动引导的公众号文章。", roles: ["operator"] },
+  { id: "short_video_scripting", name: "短视频脚本", description: "创作抖音等短视频的开场钩子、分镜、口播、字幕和互动引导。", roles: ["operator"] },
+  { id: "content_review", name: "内容审校", description: "检查内容事实、语气、品牌一致性、平台适配和潜在合规风险。", roles: ["operator"] },
 ];
 
 export const TOOL_CATALOG: ToolDefinition[] = [
@@ -79,6 +83,15 @@ export const AGENT_PRESET_CATALOG: AgentPresetDefinition[] = [
     skillIds: ["team_chat", "release_governance"],
     toolIds: ["inspect_repositories", "run_read_commands", "run_deploy_commands"],
     environmentKinds: ["staging", "production"],
+  },
+  {
+    id: "general_operations",
+    name: "运营通用 Agent",
+    description: "负责内容策划、公众号文章、短视频脚本与发布前审校。",
+    role: "operator",
+    skillIds: ["team_chat", "requirement_analysis", "content_planning", "official_account_writing", "short_video_scripting", "content_review"],
+    toolIds: ["inspect_repositories", "run_read_commands"],
+    environmentKinds: [],
   },
 ];
 

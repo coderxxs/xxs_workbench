@@ -213,8 +213,26 @@ try {
     assert.strictEqual(archive[0].people[0].removedAgents[0].id, "agent-old");
   });
 
-  test("provides valid common Agent presets for every delivery role", () => {
-    assert.deepStrictEqual(AGENT_PRESET_CATALOG.map((preset) => preset.role), ["developer", "tester", "deployer", "releaser"]);
+  test("supports an operations person with content creation skills", () => {
+    const operationsHome = path.join(temporaryRoot, "operations-home");
+    const person = createPerson({ name: "Content Operator", roles: ["operator"] }, operationsHome);
+    const updated = savePersonAgent(person.id, {
+      name: "运营通用 Agent",
+      role: "operator",
+      providerId: "deepseek",
+      skillIds: ["content_planning", "official_account_writing", "short_video_scripting", "content_review"],
+      toolIds: ["inspect_repositories", "run_read_commands"],
+      repositoryIds: [],
+      environmentIds: [],
+    }, operationsHome);
+    assert.strictEqual(updated.roles[0], "operator");
+    assert.strictEqual(updated.agents[0].role, "operator");
+    assert.ok(updated.agents[0].skillIds.includes("official_account_writing"));
+    assert.ok(updated.agents[0].skillIds.includes("short_video_scripting"));
+  });
+
+  test("provides valid common Agent presets for every supported role", () => {
+    assert.deepStrictEqual(AGENT_PRESET_CATALOG.map((preset) => preset.role), ["developer", "tester", "deployer", "releaser", "operator"]);
     const skillIds = new Set(SKILL_CATALOG.map((skill) => skill.id));
     const toolIds = new Set(TOOL_CATALOG.map((tool) => tool.id));
     for (const preset of AGENT_PRESET_CATALOG) {
@@ -226,6 +244,9 @@ try {
     }
     assert.ok(AGENT_PRESET_CATALOG.find((preset) => preset.role === "developer")?.toolIds.includes("run_write_commands"));
     assert.ok(AGENT_PRESET_CATALOG.find((preset) => preset.role === "releaser")?.toolIds.includes("run_deploy_commands"));
+    const operationsPreset = AGENT_PRESET_CATALOG.find((preset) => preset.role === "operator");
+    assert.ok(operationsPreset?.skillIds.includes("official_account_writing"));
+    assert.ok(operationsPreset?.skillIds.includes("short_video_scripting"));
   });
 
   test("upgrades existing Agents with the group chat collaboration Skill", () => {

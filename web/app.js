@@ -494,62 +494,46 @@ function personWorkstationInfo(person) {
 }
 
 function personWorkstationZone(person) {
-  const role = person.roles.find((item) => ["developer", "tester", "deployer", "releaser"].includes(item));
+  const role = person.roles.find((item) => ["developer", "tester", "deployer", "releaser", "operator"].includes(item));
   if (role === "tester") return "testing";
   if (role === "deployer" || role === "releaser") return "operations";
+  if (role === "operator") return "content";
   return "development";
 }
 
 function renderWorkstationZones(workstationInfo) {
   const people = state.people.map((person, index) => ({ person, info: workstationInfo[index] }));
   const zones = [
-    { id: "development", title: "研发区", icon: "</>", description: "需求分析、编码实现与代码审查" },
-    { id: "testing", title: "测试区", icon: "✓", description: "测试设计、执行与故障验证" },
-    { id: "operations", title: "运维区", icon: "⌁", description: "部署、发布与运行保障" },
+    { id: "development", title: "研发区", icon: "</>" },
+    { id: "testing", title: "测试区", icon: "✓" },
+    { id: "operations", title: "运维区", icon: "⌁" },
+    { id: "content", title: "运营区", icon: "文" },
   ];
   return zones.map((zone) => {
     const members = people.filter(({ person }) => personWorkstationZone(person) === zone.id);
     const busyCount = members.filter(({ info }) => info.isBusy).length;
     const workstations = members.length
-      ? members.map(({ person, info }, index) => renderPersonWorkstation(person, info, `${zone.title.slice(0, 1)}-${String(index + 1).padStart(2, "0")}`)).join("")
+      ? members.map(({ person, info }) => renderPersonWorkstation(person, info)).join("")
       : `<div class="workstation-zone-empty">${escapeHtml(zone.title)}暂无人员</div>`;
     return `
       <section class="workstation-zone workstation-zone-${zone.id}">
         <header class="workstation-zone-header">
-          <div class="workstation-zone-identity"><span class="workstation-zone-icon">${escapeHtml(zone.icon)}</span><div><strong>${escapeHtml(zone.title)}</strong><small>${escapeHtml(zone.description)}</small></div></div>
-          <span class="workstation-zone-summary">${members.length} 人 · ${busyCount} 忙碌 · ${members.length - busyCount} 空闲</span>
+          <div class="workstation-zone-identity"><span class="workstation-zone-icon">${escapeHtml(zone.icon)}</span><strong>${escapeHtml(zone.title)}</strong></div>
+          <span class="workstation-zone-summary" title="${busyCount} 人忙碌，${members.length - busyCount} 人空闲"><i></i>${members.length}</span>
         </header>
         <div class="workstation-zone-grid">${workstations}</div>
       </section>`;
   }).join("");
 }
 
-function renderPersonWorkstation(person, info, slotLabel) {
-  const agent = person.agents[0];
-  const focus = info.active[0];
+function renderPersonWorkstation(person, info) {
   const statusLabel = info.isBusy ? "忙碌" : "空闲";
-  const statusDetail = focus
-    ? `${focus.task.title}${info.active.length > 1 ? ` 等 ${info.active.length} 项` : ""}`
-    : info.assigned.length ? `等待处理 ${info.assigned.length} 项任务` : "等待新任务";
-  const agentAction = agent
-    ? `<button type="button" data-edit-person-agent="${escapeAttr(agent.id)}" data-person-id="${escapeAttr(person.id)}">编辑 Agent</button>`
-    : `<button type="button" data-add-person-agent="${escapeAttr(person.id)}">配置 Agent</button>`;
   return `
-    <article class="workstation-card ${info.isBusy ? "is-busy" : "is-idle"}">
-      <header class="workstation-card-header">
-        <div><strong>${escapeHtml(person.name)}</strong><small>${person.roles.map(assigneeRoleLabel).map(escapeHtml).join(" · ")}</small></div>
-        <div class="workstation-card-state"><span class="workstation-slot">${escapeHtml(slotLabel)}</span><span class="workstation-status"><i></i>${statusLabel}</span></div>
-      </header>
-      <div class="workstation-scene" role="img" aria-label="${escapeAttr(`${person.name}当前${statusLabel}，${info.isBusy ? "正在工位敲击键盘" : "趴在工位休息"}`)}"></div>
-      <div class="workstation-info">
-        <div class="workstation-task"><span>${info.isBusy ? "正在处理" : "当前状态"}</span><strong title="${escapeAttr(statusDetail)}">${escapeHtml(statusDetail)}</strong></div>
-        <div class="workstation-agent"><span class="person-agent-mark">✦</span><div><strong>${escapeHtml(agent?.name || "尚未配置 Agent")}</strong><small>${agent ? `${escapeHtml(agent.providerId)} · ${agent.toolIds.length} Tools` : "配置后即可参与协作"}</small></div></div>
+    <article class="workstation-card ${info.isBusy ? "is-busy" : "is-idle"}" aria-label="${escapeAttr(person.name)}，当前${statusLabel}">
+      <div class="workstation-scene" role="img" aria-label="${escapeAttr(`${person.name}当前${statusLabel}，${info.isBusy ? "正在工位敲击键盘" : "趴在工位休息"}`)}">
+        <span class="workstation-person-name">${escapeHtml(person.name)}</span>
+        <span class="workstation-status"><i></i>${statusLabel}</span>
       </div>
-      <footer class="workstation-actions">
-        <button type="button" data-edit-person="${escapeAttr(person.id)}">编辑人员</button>
-        ${agentAction}
-        <button type="button" class="danger" data-delete-person="${escapeAttr(person.id)}" aria-label="删除 ${escapeAttr(person.name)}">删除</button>
-      </footer>
     </article>`;
 }
 
@@ -851,7 +835,7 @@ function workflowStageLabel(stage) {
 }
 
 function assigneeRoleLabel(role) {
-  return ({ developer: "开发", tester: "测试", deployer: "部署", releaser: "发布" })[role] || role;
+  return ({ developer: "开发", tester: "测试", deployer: "部署", releaser: "发布", operator: "运营" })[role] || role;
 }
 
 function taskRole(stage) {
@@ -1380,7 +1364,7 @@ function openPersonModal(personId) {
   document.getElementById("person-name").value = person?.name || "";
   document.getElementById("person-modal-kicker").textContent = person ? "EDIT PERSON" : "NEW PERSON";
   document.getElementById("person-modal-title").textContent = person ? `编辑 ${person.name}` : "新建人员";
-  document.getElementById("person-role-options").innerHTML = roleDefinitions().map((role, index) => capabilityOption(role.value, role.label, "负责该阶段任务并对结果负责", person ? person.roles.includes(role.value) : index === 0)).join("");
+  document.getElementById("person-role-options").innerHTML = roleDefinitions().map((role, index) => capabilityOption(role.value, role.label, role.description, person ? person.roles.includes(role.value) : index === 0)).join("");
   document.getElementById("person-create").textContent = person ? "保存人员" : "创建人员";
   document.getElementById("person-modal").hidden = false;
   setTimeout(() => document.getElementById("person-name").focus(), 50);
@@ -1508,7 +1492,7 @@ function openPersonAgentModal(personId, agentId) {
 }
 
 function renderAgentPresetChoices(person) {
-  const icons = { developer: "开", tester: "测", deployer: "部", releaser: "发" };
+  const icons = { developer: "开", tester: "测", deployer: "部", releaser: "发", operator: "营" };
   const target = document.getElementById("person-agent-presets");
   target.innerHTML = state.agentPresets.length
     ? state.agentPresets.map((preset) => {
@@ -1587,10 +1571,11 @@ function checkedValues(containerId) {
 
 function roleDefinitions() {
   return [
-    { value: "developer", label: "开发" },
-    { value: "tester", label: "测试" },
-    { value: "deployer", label: "部署" },
-    { value: "releaser", label: "发布" },
+    { value: "developer", label: "开发", description: "需求分析、编码实现与代码审查" },
+    { value: "tester", label: "测试", description: "测试设计、执行与故障验证" },
+    { value: "deployer", label: "部署", description: "环境部署、验证与回滚准备" },
+    { value: "releaser", label: "发布", description: "版本核对、审批与正式发布" },
+    { value: "operator", label: "运营", description: "公众号文章、短视频脚本与内容运营" },
   ];
 }
 

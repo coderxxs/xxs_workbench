@@ -66,7 +66,7 @@ export interface AgentConfig {
 export type WorkflowStage = "requirement" | "plan" | "tasks" | "coding" | "deployment" | "testing" | "release";
 export type TaskExecutionStage = "coding" | "deployment" | "testing" | "release";
 export type TaskStatus = "pending" | "in_progress" | "blocked" | "completed" | "failed";
-export type AssigneeRole = "developer" | "tester" | "deployer" | "releaser";
+export type AssigneeRole = "developer" | "tester" | "deployer" | "releaser" | "operator";
 export type AgentToolPermission = "inspect_repositories" | "run_read_commands" | "run_write_commands" | "run_deploy_commands";
 
 export interface WorkflowTaskItem {

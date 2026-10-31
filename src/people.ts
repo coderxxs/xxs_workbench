@@ -8,7 +8,7 @@ import { AgentToolPermission, AssigneeRole, DevelopmentPerson, PersonAgentProfil
 
 const PEOPLE_FILE = "people.json";
 const PEOPLE_AGENT_ARCHIVE_FILE = "people-agent-archive.json";
-const ROLES: AssigneeRole[] = ["developer", "tester", "deployer", "releaser"];
+const ROLES: AssigneeRole[] = ["developer", "tester", "deployer", "releaser", "operator"];
 const TOOLS: AgentToolPermission[] = ["inspect_repositories", "run_read_commands", "run_write_commands", "run_deploy_commands"];
 
 export interface NewPerson {

@@ -240,7 +240,7 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
     const personId = requiredIdentifier(body.personId, "personId");
     const person = loadPeople().find((item) => item.id === personId);
     if (!person) throw new HttpError(404, `Unknown person: ${personId}`);
-    const role = requiredEnum(body.role, "role", ["developer", "tester", "deployer", "releaser"] as const) as AssigneeRole;
+    const role = requiredEnum(body.role, "role", ["developer", "tester", "deployer", "releaser", "operator"] as const) as AssigneeRole;
     if (!person.roles.includes(role)) throw new HttpError(409, "Agent role must be one of the person's roles.");
     const providerId = requiredIdentifier(body.providerId, "providerId");
     if (!config.providers[providerId]) throw new HttpError(404, `Unknown provider: ${providerId}`);
@@ -665,7 +665,7 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
         model: modelId,
         tools: buildAgentTools(projects, allowedTools),
         system: [
-          "You are a local developer workbench agent.",
+          "You are a local product workbench agent supporting development, testing, operations, release, and content work.",
           "Use tools for project facts and registered commands; never invent execution results.",
           "Explain failures and approval requirements clearly.",
           profile ? `Responsible person: ${profile.person.name}. Agent profile: ${profile.agent.name}. Role: ${profile.agent.role}.` : "Manual Agent mode is active.",
@@ -1078,7 +1078,7 @@ function requiredStringArray(value: unknown, name: string): string[] {
 
 function requiredRoleArray(value: unknown, name: string): AssigneeRole[] {
   const roles = requiredStringArray(value, name).map((role) =>
-    requiredEnum(role, name, ["developer", "tester", "deployer", "releaser"] as const) as AssigneeRole,
+    requiredEnum(role, name, ["developer", "tester", "deployer", "releaser", "operator"] as const) as AssigneeRole,
   );
   if (!roles.length) throw new HttpError(400, `${name} must contain at least one role.`);
   return roles;

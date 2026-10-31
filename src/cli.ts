@@ -328,7 +328,7 @@ async function taskCommand(args: string[]): Promise<number> {
       model: modelId,
       tools,
       system: [
-        "You are a local developer workbench agent.",
+        "You are a local product workbench agent supporting development, testing, operations, release, and content work.",
         "Use the supplied tools when the request depends on project state or requires running a registered command.",
         "Never invent command output, project names, or completed actions.",
         "Only registered commands are available; explain any capability that is missing.",
