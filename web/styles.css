@@ -546,7 +546,12 @@ td code { color: #596574; font-size: 10px; }
 .provider-logo.kimi { background: #7b5ac8; }
 .provider-card h4 { margin: 14px 0 4px; text-transform: capitalize; }
 .provider-card p { margin: 0; color: #808995; font-size: 9px; line-height: 1.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.provider-model { margin-top: 12px; padding-top: 11px; border-top: 1px solid #e2e5e8; color: #4d5865; font-size: 10px; font-weight: 700; }
+.provider-model { display: grid; gap: 7px; margin-top: 12px; padding-top: 11px; border-top: 1px solid #e2e5e8; color: #4d5865; font-size: 10px; font-weight: 700; }
+.provider-model label { font-size: var(--type-caption); }
+.provider-model select { width: 100%; min-height: 40px; padding: 9px 34px 9px 11px; color: #34404d; background: #fff; border: 1px solid #dfe3e7; border-radius: 9px; outline: 0; }
+.provider-model select:focus { border-color: #a79ee6; box-shadow: 0 0 0 3px rgba(102,87,217,.08); }
+.provider-model select:disabled { cursor: wait; opacity: .65; }
+.provider-model small { color: #7f8995; font-size: var(--type-caption); font-weight: 500; }
 .provider-key-form { display: grid; gap: 8px; margin-top: 14px; padding-top: 13px; border-top: 1px solid #e2e5e8; }
 .provider-key-form label { color: #4d5865; font-size: var(--type-caption); font-weight: 750; }
 .provider-key-form input { width: 100%; padding: 10px 11px; color: #34404d; background: #fff; border: 1px solid #dfe3e7; border-radius: 9px; outline: 0; }
@@ -1044,6 +1049,8 @@ html[data-theme="dark"] th { color: #8d9aaa; background: #18232f; }
 html[data-theme="dark"] td code { color: #aeb9c6; }
 html[data-theme="dark"] .provider-card p { color: #8996a5; }
 html[data-theme="dark"] .provider-model { color: #bac4d0; border-color: #303b48; }
+html[data-theme="dark"] .provider-model select { color: #d9e0e9; background: #141e29; border-color: #303d4b; }
+html[data-theme="dark"] .provider-model small { color: #8491a1; }
 html[data-theme="dark"] .provider-key-form { border-color: #303b48; }
 html[data-theme="dark"] .provider-key-form label { color: #c2ccd8; }
 html[data-theme="dark"] .provider-key-form input { color: #d9e0e9; background: #141e29; border-color: #303d4b; }

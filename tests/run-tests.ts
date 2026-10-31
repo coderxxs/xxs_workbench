@@ -7,6 +7,7 @@ import { configPath, defaultConfig, detectProject, initializeConfig, loadConfig,
 import { databasePath, databaseStats } from "../src/database";
 import { listLocalDirectories, suggestRepositoryId } from "../src/directory-browser";
 import { createGroupChat, loadGroupChats, mentionedGroupChatMemberIds, postGroupChatMessage } from "../src/group-chats";
+import { isProviderModelOption, providerModelOptions } from "../src/model-catalog";
 import { consolidatePersonAgents, createPerson, deletePerson, ensurePersonAgentSkill, hasPersonAgentForRole, loadPeople, peopleAgentArchivePath, peoplePath, savePersonAgent, updatePerson } from "../src/people";
 import { runShellCaptured } from "../src/process";
 import { deleteSecretValue, legacySecretFilePath, migrateLegacySecretFile, parseEnv, providerApiKey, saveSecretValue, secretValueStatus } from "../src/secrets";
@@ -51,7 +52,25 @@ try {
     assert.ok(config.providers.deepseek);
     assert.ok(config.providers.kimi);
     assert.strictEqual(config.defaultProvider, "deepseek");
+    assert.strictEqual(config.providers.openai.defaultModel, "gpt-5.6-sol");
+    assert.strictEqual(config.providers.deepseek.defaultModel, "deepseek-flash");
+    assert.strictEqual(config.providers.kimi.defaultModel, "kimi-k3.1-pro");
+    assert.ok(providerModelOptions(config.providers.openai).some((model) => model.id === "gpt-6.1-sol"));
+    assert.ok(isProviderModelOption("deepseek", "deepseek-v4-pro"));
+    assert.ok(isProviderModelOption("kimi", "kimi-k3.1-pro-highspeed"));
     assert.deepStrictEqual(config.products, {});
+  });
+
+  test("migrates legacy provider model defaults", () => {
+    const config = defaultConfig();
+    config.providers.openai.defaultModel = "gpt-5.6";
+    config.providers.deepseek.defaultModel = "deepseek-chat";
+    config.providers.kimi.defaultModel = "kimi-k2.5";
+    writeConfig(config);
+    const migrated = loadConfig();
+    assert.strictEqual(migrated.providers.openai.defaultModel, "gpt-5.6-sol");
+    assert.strictEqual(migrated.providers.deepseek.defaultModel, "deepseek-flash");
+    assert.strictEqual(migrated.providers.kimi.defaultModel, "kimi-k3.1-pro");
   });
 
   test("detects a Node project and registered scripts", () => {

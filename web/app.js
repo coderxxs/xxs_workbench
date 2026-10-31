@@ -216,6 +216,10 @@ function bindActions() {
   kanbanBoard.addEventListener("dragleave", leaveKanbanDrop);
   kanbanBoard.addEventListener("drop", dropKanbanTask);
   document.getElementById("provider-grid").addEventListener("submit", saveProviderKey);
+  document.getElementById("provider-grid").addEventListener("change", (event) => {
+    const select = event.target.closest("[data-provider-model]");
+    if (select) saveProviderModel(select);
+  });
   document.getElementById("provider-grid").addEventListener("click", (event) => {
     const button = event.target.closest("[data-clear-provider-key]");
     if (button && !button.disabled) clearProviderKey(button.dataset.clearProviderKey);
@@ -1083,7 +1087,7 @@ function renderAgentOptions() {
 
   const providerSelect = document.getElementById("agent-provider");
   providerSelect.innerHTML = state.overview.providers.map((provider) => `
-    <option value="${escapeAttr(provider.id)}" ${provider.ready ? "" : "disabled"}>${escapeHtml(provider.id)} · ${escapeHtml(provider.model)}${provider.ready ? "" : "（未配置）"}</option>
+    <option value="${escapeAttr(provider.id)}" ${provider.ready ? "" : "disabled"}>${escapeHtml(provider.id)} · ${escapeHtml(provider.modelName || provider.model)}${provider.ready ? "" : "（未配置）"}</option>
   `).join("");
   const readyProvider = state.overview.providers.find((provider) => provider.ready);
   if (readyProvider) providerSelect.value = readyProvider.id;
@@ -1129,7 +1133,13 @@ function renderSettings() {
       <div class="provider-card-head"><span class="provider-logo ${escapeAttr(provider.id)}">${escapeHtml(provider.id.slice(0, 2))}</span><span class="badge ${provider.ready ? "success" : "neutral"}">${provider.ready ? "已配置" : "未配置"}</span></div>
       <h4>${escapeHtml(provider.id)} ${provider.isDefault ? '<span class="badge neutral">default</span>' : ""}</h4>
       <p title="${escapeAttr(provider.baseUrl)}">${escapeHtml(provider.baseUrl)}</p>
-      <div class="provider-model">${escapeHtml(provider.model)} · ${escapeHtml(provider.type)}</div>
+      <div class="provider-model">
+        <label for="provider-model-${escapeAttr(provider.id)}">默认模型</label>
+        <select id="provider-model-${escapeAttr(provider.id)}" data-provider-model="${escapeAttr(provider.id)}">
+          ${(provider.models || []).map((model) => `<option value="${escapeAttr(model.id)}" ${model.id === provider.model ? "selected" : ""}>${escapeHtml(model.name)}</option>`).join("")}
+        </select>
+        <small>切换后，新请求将使用所选模型</small>
+      </div>
       <form class="provider-key-form" data-provider-key-form="${escapeAttr(provider.id)}">
         <label for="provider-key-${escapeAttr(provider.id)}">API Key</label>
         <input id="provider-key-${escapeAttr(provider.id)}" name="apiKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="输入新 Key（不会回显）" required />
@@ -1148,6 +1158,24 @@ function providerKeySourceLabel(source) {
   if (source === "database") return "SQLite 数据库";
   if (source === "environment") return "环境变量";
   return "未配置";
+}
+
+async function saveProviderModel(select) {
+  const providerId = select.dataset.providerModel;
+  select.disabled = true;
+  try {
+    const result = await api("/api/settings/provider-model", {
+      method: "POST",
+      body: JSON.stringify({ providerId, modelId: select.value }),
+    });
+    state.settings.providers = result.providers;
+    state.overview.providers = result.providers;
+    renderSettings();
+    showToast(result.message || "默认模型已更新");
+  } catch (error) {
+    renderSettings();
+    showToast(error.message, true);
+  }
 }
 
 async function saveProviderKey(event) {
@@ -1276,7 +1304,7 @@ function openPersonAgentModal(personId, agentId) {
   roleSelect.innerHTML = person.roles.map((role) => `<option value="${escapeAttr(role)}">${escapeHtml(assigneeRoleLabel(role))}</option>`).join("");
   roleSelect.value = agent?.role || person.roles[0];
   const providerSelect = document.getElementById("person-agent-provider");
-  providerSelect.innerHTML = state.overview.providers.map((provider) => `<option value="${escapeAttr(provider.id)}" ${provider.ready ? "" : "disabled"}>${escapeHtml(provider.id)} · ${escapeHtml(provider.model)}${provider.ready ? "" : "（未配置）"}</option>`).join("");
+  providerSelect.innerHTML = state.overview.providers.map((provider) => `<option value="${escapeAttr(provider.id)}" ${provider.ready ? "" : "disabled"}>${escapeHtml(provider.id)} · ${escapeHtml(provider.modelName || provider.model)}${provider.ready ? "" : "（未配置）"}</option>`).join("");
   const readyProvider = state.overview.providers.find((provider) => provider.ready);
   providerSelect.value = agent?.providerId || readyProvider?.id || state.overview.providers[0]?.id || "";
 
@@ -1439,7 +1467,7 @@ function openMilestoneModal() {
   const productSelect = document.getElementById("milestone-product");
   productSelect.innerHTML = state.overview.products.map((product) => `<option value="${escapeAttr(product.id)}">${escapeHtml(product.name)}</option>`).join("");
   const providerSelect = document.getElementById("milestone-provider");
-  providerSelect.innerHTML = state.overview.providers.map((provider) => `<option value="${escapeAttr(provider.id)}" ${provider.ready ? "" : "disabled"}>${escapeHtml(provider.id)} · ${escapeHtml(provider.model)}${provider.ready ? "" : "（未配置）"}</option>`).join("");
+  providerSelect.innerHTML = state.overview.providers.map((provider) => `<option value="${escapeAttr(provider.id)}" ${provider.ready ? "" : "disabled"}>${escapeHtml(provider.id)} · ${escapeHtml(provider.modelName || provider.model)}${provider.ready ? "" : "（未配置）"}</option>`).join("");
   const readyProvider = state.overview.providers.find((provider) => provider.ready);
   if (readyProvider) providerSelect.value = readyProvider.id;
   document.getElementById("milestone-title").value = "";

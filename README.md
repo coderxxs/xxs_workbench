@@ -84,7 +84,7 @@ node dist/src/cli.js task "检查 demo 的 Git 状态并运行测试" --project 
 
 ## 配置 API Key
 
-进入“设置 → 模型 Provider 与 API Key”，可直接保存、更换或清除各 Provider 的 Key。页面不会读取或回显旧 Key；保存内容写入 `.dev-agent/dev-work-agent.sqlite` 的 `provider_secrets` 表。显式环境变量的优先级高于数据库值。
+进入“设置 → 模型 Provider 与 API Key”，可为每个 Provider 选择默认模型，也可直接保存、更换或清除 Key。默认使用 GPT-5.6 Sol、DeepSeek V4.1 Flash 和 Kimi K3.1 Pro；选择结果与 Key 均保存在 `.dev-agent/dev-work-agent.sqlite`。页面不会读取或回显旧 Key，显式环境变量的优先级高于数据库值。
 
 可用下面的命令检查配置状态，它不会显示 Key：
 
@@ -104,7 +104,7 @@ node dist/src/cli.js ask "给出排查思路" --provider deepseek
 node dist/src/cli.js ask "总结发布风险" --provider kimi --model <可用模型名>
 ```
 
-执行 `init` 后，配置和 API Key 位于 `.dev-agent/dev-work-agent.sqlite`。模型名称可能随供应商更新，业务逻辑不会依赖具体名称。
+执行 `init` 后，配置和 API Key 位于 `.dev-agent/dev-work-agent.sqlite`。设置页切换默认模型后，新请求会立即使用新的模型标识。
 
 ## 安全模型
 

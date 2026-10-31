@@ -7,6 +7,7 @@ import { configPath, detectProject, findAgentHome, initializeConfig, loadConfig,
 import { hasStoredConfig } from "./database";
 import { listLocalDirectories, suggestRepositoryId } from "./directory-browser";
 import { createGroupChat, loadGroupChats, mentionedGroupChatMemberIds, postGroupChatMessage } from "./group-chats";
+import { isProviderModelOption, providerModelOptions } from "./model-catalog";
 import { consolidatePersonAgents, createPerson, deletePerson, ensurePersonAgentSkill, findPersonAgent, hasPersonAgentForRole, loadPeople, savePersonAgent, updatePerson } from "./people";
 import { runCaptured, runShellCaptured } from "./process";
 import { chat, runAgent } from "./providers";
@@ -157,6 +158,29 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
       providerId,
       providers: publicProviders(config),
       message: action === "save" ? "API Key 已保存到 SQLite。" : "SQLite 中的 API Key 已清除。",
+    });
+    return;
+  }
+  if (method === "POST" && url.pathname === "/api/settings/provider-model") {
+    const body = await readJsonBody(request);
+    const config = loadConfig();
+    const providerId = requiredIdentifier(body.providerId, "providerId");
+    const provider = config.providers[providerId];
+    if (!provider) throw new HttpError(404, `Unknown provider: ${providerId}`);
+    const modelId = requiredString(body.modelId, "modelId");
+    if (!isProviderModelOption(providerId, modelId)) {
+      throw new HttpError(400, `Unsupported model for ${providerId}: ${modelId}`);
+    }
+    provider.defaultModel = modelId;
+    writeConfig(config);
+    const runId = createRunId();
+    audit(runId, "completed", "web.provider-model-select", { provider: providerId, model: modelId });
+    sendJson(response, 200, {
+      ok: true,
+      providerId,
+      modelId,
+      providers: publicProviders(config),
+      message: `${providerId} 默认模型已切换。`,
     });
     return;
   }
@@ -896,11 +920,15 @@ function normalizeProduct(value: unknown): ProductConfig {
 function publicProviders(config: AgentConfig): Array<Record<string, unknown>> {
   return Object.values(config.providers).map((provider) => {
     const keyStatus = secretValueStatus(provider.apiKeyEnv);
+    const models = providerModelOptions(provider);
+    const selectedModel = models.find((model) => model.id === provider.defaultModel);
     return {
       id: provider.id,
       type: provider.type,
       baseUrl: provider.baseUrl,
       model: provider.defaultModel,
+      modelName: selectedModel?.name ?? provider.defaultModel,
+      models,
       ready: keyStatus.configured,
       keySource: keyStatus.source,
       databaseConfigured: keyStatus.databaseConfigured,

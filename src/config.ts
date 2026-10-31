@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { databasePath, hasStoredConfig, loadStoredConfig, saveStoredConfig } from "./database";
+import { migrateLegacyProviderModels } from "./model-catalog";
 import {
   AgentConfig,
   EnvironmentKind,
@@ -47,21 +48,21 @@ export function defaultConfig(): AgentConfig {
       type: "openai-responses",
       baseUrl: "https://api.openai.com/v1",
       apiKeyEnv: "OPENAI_API_KEY",
-      defaultModel: "gpt-5.6",
+      defaultModel: "gpt-5.6-sol",
     },
     deepseek: {
       id: "deepseek",
       type: "openai-compatible",
       baseUrl: "https://api.deepseek.com",
       apiKeyEnv: "DEEPSEEK_API_KEY",
-      defaultModel: "deepseek-chat",
+      defaultModel: "deepseek-flash",
     },
     kimi: {
       id: "kimi",
       type: "openai-compatible",
       baseUrl: "https://api.moonshot.cn/v1",
       apiKeyEnv: "KIMI_API_KEY",
-      defaultModel: "kimi-k2.5",
+      defaultModel: "kimi-k3.1-pro",
     },
   };
 
@@ -91,11 +92,20 @@ export function loadConfig(home = findAgentHome()): AgentConfig {
   }
   // Config version 1 originally contained only repositories. Add the product
   // layer in memory so existing installations migrate without a breaking step.
-  if (!parsed.products) parsed.products = {};
-  for (const product of Object.values(parsed.products)) {
-    if (!product.deployments) product.deployments = [];
+  let migrated = false;
+  if (!parsed.products) {
+    parsed.products = {};
+    migrated = true;
   }
+  for (const product of Object.values(parsed.products)) {
+    if (!product.deployments) {
+      product.deployments = [];
+      migrated = true;
+    }
+  }
+  migrated = migrateLegacyProviderModels(parsed.providers) || migrated;
   validateConfig(parsed);
+  if (migrated) saveStoredConfig(home, parsed);
   return parsed;
 }
 
@@ -117,6 +127,12 @@ export function validateConfig(config: AgentConfig): void {
   }
   if (!config.providers[config.defaultProvider]) {
     throw new Error(`Default provider does not exist: ${config.defaultProvider}`);
+  }
+
+  for (const [id, provider] of Object.entries(config.providers)) {
+    if (id !== provider.id || !provider.baseUrl || !provider.apiKeyEnv || !provider.defaultModel) {
+      throw new Error(`Invalid provider config: ${id}`);
+    }
   }
 
   for (const [id, project] of Object.entries(config.projects)) {
