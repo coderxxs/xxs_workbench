@@ -11,6 +11,7 @@ const state = {
   agentPresets: [],
   groupChats: [],
   activeGroupChatId: null,
+  kanbanProductId: "",
   kanbanMilestoneId: "",
   kanbanOwnerId: "",
   draggedKanbanTask: null,
@@ -187,6 +188,11 @@ function bindActions() {
   document.getElementById("runs-refresh").addEventListener("click", refreshRuns);
   document.getElementById("clear-chat").addEventListener("click", clearChat);
   document.getElementById("agent-form").addEventListener("submit", submitAgentTask);
+  document.getElementById("kanban-product-filter").addEventListener("change", (event) => {
+    state.kanbanProductId = event.target.value;
+    state.kanbanMilestoneId = "";
+    renderKanban();
+  });
   document.getElementById("kanban-milestone-filter").addEventListener("change", (event) => {
     state.kanbanMilestoneId = event.target.value;
     renderKanban();
@@ -484,14 +490,27 @@ function normalizedTaskStatus(status) {
 }
 
 function renderKanban() {
+  const productSelect = document.getElementById("kanban-product-filter");
   const milestoneSelect = document.getElementById("kanban-milestone-filter");
   const ownerSelect = document.getElementById("kanban-owner-filter");
-  if (!milestoneSelect || !ownerSelect) return;
+  if (!productSelect || !milestoneSelect || !ownerSelect) return;
 
-  milestoneSelect.innerHTML = '<option value="">全部版本</option>' + state.milestones.map((milestone) =>
+  const products = state.overview?.products || [];
+  productSelect.innerHTML = '<option value="">请选择产品</option>' + products.map((product) =>
+    `<option value="${escapeAttr(product.id)}">${escapeHtml(product.name)}</option>`,
+  ).join("");
+  if (products.some((item) => item.id === state.kanbanProductId)) productSelect.value = state.kanbanProductId;
+  else {
+    state.kanbanProductId = "";
+    state.kanbanMilestoneId = "";
+  }
+
+  const productMilestones = state.milestones.filter((milestone) => milestone.productId === state.kanbanProductId);
+  milestoneSelect.disabled = !state.kanbanProductId || productMilestones.length === 0;
+  milestoneSelect.innerHTML = `<option value="">${state.kanbanProductId ? (productMilestones.length ? "请选择版本" : "该产品暂无版本") : "请先选择产品"}</option>` + productMilestones.map((milestone) =>
     `<option value="${escapeAttr(milestone.id)}">${escapeHtml(milestone.title)}</option>`,
   ).join("");
-  if (state.milestones.some((item) => item.id === state.kanbanMilestoneId)) milestoneSelect.value = state.kanbanMilestoneId;
+  if (productMilestones.some((item) => item.id === state.kanbanMilestoneId)) milestoneSelect.value = state.kanbanMilestoneId;
   else state.kanbanMilestoneId = "";
 
   ownerSelect.innerHTML = '<option value="">全部负责人</option><option value="__unassigned__">未分配</option>' + state.people.map((person) =>
@@ -501,15 +520,20 @@ function renderKanban() {
   else state.kanbanOwnerId = "";
 
   const allTasks = allKanbanTasks();
+  document.getElementById("nav-kanban-count").textContent = String(allTasks.filter(({ task }) => normalizedTaskStatus(task.status) !== "completed").length);
+  if (!state.kanbanProductId || !state.kanbanMilestoneId) {
+    document.getElementById("kanban-summary").textContent = state.kanbanProductId ? "请选择版本" : "请选择产品和版本";
+    document.getElementById("kanban-board").innerHTML = `<div class="kanban-scope-empty"><span>▦</span><h3>${state.kanbanProductId ? "请选择交付版本" : "先确定产品和版本"}</h3><p>${state.kanbanProductId ? "版本选择后，将显示该版本的全部研发任务。" : "看板以单个产品的单个版本为工作范围，避免不同交付批次的任务混在一起。"}</p></div>`;
+    return;
+  }
   const tasks = allTasks.filter(({ workflow, task }) => {
-    if (state.kanbanMilestoneId && workflow.milestoneId !== state.kanbanMilestoneId) return false;
+    if (workflow.productId !== state.kanbanProductId || workflow.milestoneId !== state.kanbanMilestoneId) return false;
     if (state.kanbanOwnerId === "__unassigned__" && task.ownerId) return false;
     if (state.kanbanOwnerId && state.kanbanOwnerId !== "__unassigned__" && task.ownerId !== state.kanbanOwnerId) return false;
     return true;
   });
   const completed = tasks.filter(({ task }) => normalizedTaskStatus(task.status) === "completed").length;
   document.getElementById("kanban-summary").innerHTML = `<strong>${tasks.length}</strong> 个任务 · <strong>${completed}</strong> 已完成`;
-  document.getElementById("nav-kanban-count").textContent = String(allTasks.filter(({ task }) => normalizedTaskStatus(task.status) !== "completed").length);
 
   document.getElementById("kanban-board").innerHTML = kanbanColumns.map((column) => {
     const columnTasks = tasks.filter(({ task }) => normalizedTaskStatus(task.status) === column.status);
