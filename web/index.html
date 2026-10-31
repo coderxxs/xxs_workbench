@@ -419,6 +419,21 @@
       </section>
     </div>
 
+    <div class="modal-backdrop" id="action-confirm-modal" hidden>
+      <section class="modal action-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="action-confirm-title" aria-describedby="action-confirm-message">
+        <div class="action-confirm-header">
+          <span class="action-confirm-icon" id="action-confirm-icon" aria-hidden="true">!</span>
+          <div class="action-confirm-heading"><span class="panel-kicker" id="action-confirm-kicker">CONFIRM ACTION</span><h2 id="action-confirm-title">确认操作</h2></div>
+          <button class="icon-button subtle" id="action-confirm-close" aria-label="关闭确认弹窗">×</button>
+        </div>
+        <div class="action-confirm-body">
+          <p id="action-confirm-message"></p>
+          <ul class="action-confirm-details" id="action-confirm-details"></ul>
+        </div>
+        <div class="modal-footer action-confirm-footer"><button type="button" class="secondary-button" id="action-confirm-cancel">取消</button><button type="button" class="action-confirm-button danger" id="action-confirm-accept">确认</button></div>
+      </section>
+    </div>
+
     <div class="toast-region" id="toast-region" aria-live="polite"></div>
     <script src="/app.js" defer></script>
   </body>

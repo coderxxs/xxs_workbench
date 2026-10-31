@@ -23,6 +23,9 @@ const state = {
   activeConfigSection: "people",
 };
 
+let confirmationResolver = null;
+let confirmationRestoreFocus = null;
+
 const viewMeta = {
   overview: ["WORKSPACE", "工作台总览"],
   workflow: ["DELIVERY", "任务"],
@@ -185,6 +188,15 @@ function switchConfigSection(section) {
 }
 
 function bindActions() {
+  document.getElementById("action-confirm-close").addEventListener("click", () => settleConfirmation(false));
+  document.getElementById("action-confirm-cancel").addEventListener("click", () => settleConfirmation(false));
+  document.getElementById("action-confirm-accept").addEventListener("click", () => settleConfirmation(true));
+  document.getElementById("action-confirm-modal").addEventListener("click", (event) => {
+    if (event.target.id === "action-confirm-modal") settleConfirmation(false);
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !document.getElementById("action-confirm-modal").hidden) settleConfirmation(false);
+  });
   document.getElementById("refresh-button").addEventListener("click", loadDashboard);
   document.getElementById("projects-refresh").addEventListener("click", loadDashboard);
   document.getElementById("runs-refresh").addEventListener("click", refreshRuns);
@@ -1211,7 +1223,14 @@ async function saveProviderKey(event) {
 }
 
 async function clearProviderKey(providerId) {
-  if (!window.confirm(`确认清除 ${providerId} 保存在 SQLite 中的 API Key？`)) return;
+  const confirmed = await confirmAction({
+    kicker: "CLEAR API KEY",
+    title: `清除 ${providerId} API Key？`,
+    message: "清除后，该 Provider 将暂时无法调用模型，直到重新配置 Key。",
+    details: ["只删除 SQLite 中保存的 Key", "不会修改模型选择和其他 Provider", "环境变量中的 Key 不受影响"],
+    confirmText: "清除 Key",
+  });
+  if (!confirmed) return;
   try {
     const result = await api("/api/settings/provider-key", {
       method: "POST",
@@ -1280,7 +1299,14 @@ async function deleteDevelopmentPerson(personId, button) {
   const person = state.people.find((item) => item.id === personId);
   if (!person) return;
   const agentNote = person.agents.length ? "，并同时删除其 Agent" : "";
-  if (!window.confirm(`确定删除人员“${person.name}”${agentNote}吗？\n\n如果仍有关联研发任务，系统将拒绝删除。`)) return;
+  const confirmed = await confirmAction({
+    kicker: "DELETE PERSON",
+    title: `删除人员“${person.name}”？`,
+    message: `该人员将从责任人列表中移除${agentNote}。`,
+    details: ["人员信息和专用 Agent 将被删除", "仍被研发任务引用时会自动阻止", "产品、仓库和群聊记录不会删除"],
+    confirmText: "删除人员",
+  });
+  if (!confirmed) return;
   button.disabled = true;
   try {
     await api("/api/people/delete", {
@@ -1301,7 +1327,14 @@ async function deleteDevelopmentPerson(personId, button) {
 async function deleteProductConfiguration(productId, button) {
   const product = state.overview.products.find((item) => item.id === productId);
   if (!product) return;
-  if (!window.confirm(`确定删除产品“${product.name}”吗？\n\n产品环境和部署矩阵将一并删除；本地代码仓库登记会保留。若仍有关联版本、研发任务或 Agent，系统将拒绝删除。`)) return;
+  const confirmed = await confirmAction({
+    kicker: "DELETE PRODUCT",
+    title: `删除产品“${product.name}”？`,
+    message: "删除后无法从工作台恢复该产品配置。",
+    details: ["删除产品环境和部署矩阵", "保留全局登记的本地代码仓库", "有关联版本、研发任务或 Agent 时自动阻止"],
+    confirmText: "删除产品",
+  });
+  if (!confirmed) return;
   button.disabled = true;
   try {
     const result = await api("/api/products/delete", {
@@ -2042,7 +2075,17 @@ async function submitAgentTask(event) {
   const prompt = promptInput.value.trim();
   if (!prompt) return;
   const allowRisk = document.getElementById("agent-risk").checked;
-  if (allowRisk && !window.confirm("本次任务将允许 Agent 执行 write / deploy 命令。是否继续？")) return;
+  if (allowRisk) {
+    const confirmed = await confirmAction({
+      kicker: "ELEVATED PERMISSION",
+      title: "允许 Agent 执行高风险操作？",
+      message: "本次任务将临时允许 Agent 调用 write / deploy 命令。",
+      details: ["可能修改本地代码和配置", "可能执行构建或部署命令", "所有执行结果会写入运行记录"],
+      confirmText: "允许并继续",
+      tone: "warning",
+    });
+    if (!confirmed) return;
+  }
   const providerId = document.getElementById("agent-provider").value;
   const agentId = document.getElementById("agent-profile").value;
   const projectId = document.getElementById("agent-project").value;
@@ -2129,6 +2172,43 @@ function showToast(message, isError = false) {
   toast.textContent = message;
   region.appendChild(toast);
   setTimeout(() => toast.remove(), 3600);
+}
+
+function confirmAction({ kicker = "CONFIRM ACTION", title, message, details = [], confirmText = "确认", tone = "danger" }) {
+  if (confirmationResolver) settleConfirmation(false);
+  const modal = document.getElementById("action-confirm-modal");
+  const accept = document.getElementById("action-confirm-accept");
+  document.getElementById("action-confirm-kicker").textContent = kicker;
+  document.getElementById("action-confirm-title").textContent = title;
+  document.getElementById("action-confirm-message").textContent = message;
+  document.getElementById("action-confirm-icon").textContent = tone === "warning" ? "↗" : "!";
+  const detailList = document.getElementById("action-confirm-details");
+  detailList.replaceChildren(...details.map((detail) => {
+    const item = document.createElement("li");
+    item.textContent = detail;
+    return item;
+  }));
+  detailList.hidden = !details.length;
+  accept.textContent = confirmText;
+  accept.className = `action-confirm-button ${tone}`;
+  modal.dataset.tone = tone;
+  confirmationRestoreFocus = document.activeElement;
+  modal.hidden = false;
+  return new Promise((resolve) => {
+    confirmationResolver = resolve;
+    window.requestAnimationFrame(() => accept.focus());
+  });
+}
+
+function settleConfirmation(confirmed) {
+  const modal = document.getElementById("action-confirm-modal");
+  if (modal.hidden) return;
+  modal.hidden = true;
+  const resolve = confirmationResolver;
+  confirmationResolver = null;
+  resolve?.(confirmed);
+  if (confirmationRestoreFocus instanceof HTMLElement) confirmationRestoreFocus.focus();
+  confirmationRestoreFocus = null;
 }
 
 function projectInitial(project) {
