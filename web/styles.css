@@ -712,7 +712,7 @@ td code { color: #596574; font-size: 10px; }
 .workstation-zone-identity strong { color: #34404d; font-size: var(--type-small); }
 .workstation-zone-summary { display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; padding: 4px 8px; color: var(--zone-accent); background: var(--zone-soft); border-radius: 999px; font-size: clamp(10.5px, calc(8px + .14vw), 12px); font-weight: 800; }
 .workstation-zone-summary i { width: 6px; height: 6px; background: var(--zone-accent); border-radius: 50%; }
-.workstation-zone-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; padding: 2px 9px 8px; }
+.workstation-zone-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; padding: 2px 9px 8px; }
 .workstation-zone-empty { grid-column: 1 / -1; display: grid; place-items: center; min-height: 48px; color: #98a1ac; background: #fff; border: 1px dashed #d8dee4; border-radius: 8px; font-size: var(--type-caption); }
 .workstation-card { display: block; min-width: 0; padding: 0; overflow: hidden; color: inherit; background: #fff; border: 1px solid #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(32, 43, 55, .075); text-align: left; }
 .workstation-person-name { position: absolute; z-index: 2; top: 5px; left: 5px; max-width: 60%; overflow: hidden; padding: 3px 7px; color: #34404d; background: rgba(255,255,255,.9); border: 1px solid rgba(218,225,231,.92); border-radius: 999px; box-shadow: 0 2px 6px rgba(35,45,56,.07); font-size: clamp(10.5px, calc(8px + .14vw), 12px); font-weight: 850; text-overflow: ellipsis; white-space: nowrap; backdrop-filter: blur(5px); }
