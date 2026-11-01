@@ -157,18 +157,16 @@
 
           <section class="view" data-view="workflow">
             <div class="view-intro">
-              <div><span class="section-kicker dark">DELIVERY PIPELINE</span><p>让每条需求沿着明确阶段推进，并把完整上下文交给 Agent。</p></div>
+              <div><span class="section-kicker dark">WORKFLOW TEMPLATES</span><p>按业务场景选择流程模板，任务仍统一进入版本看板。</p></div>
               <button class="primary-button" id="add-milestone">＋ 新建版本</button>
             </div>
-            <div class="workflow-flow" aria-label="研发工作流阶段">
-              <span><b>01</b>需求</span><i>→</i><span><b>02</b>计划</span><i>→</i><span><b>03</b>任务</span><i>→</i><span><b>04</b>编码</span><i>→</i><span><b>05</b>部署</span><i>→</i><span><b>06</b>测试</span><i>→</i><span><b>07</b>发布</span>
-            </div>
+            <div class="workflow-template-strip" id="workflow-template-strip" aria-label="预设工作流模板"></div>
             <div class="workflow-list" id="workflow-list"><div class="empty-state">正在读取研发工作流…</div></div>
           </section>
 
           <section class="view" data-view="kanban">
             <div class="view-intro">
-              <div><span class="section-kicker dark">DELIVERY BOARD</span><p>以版本为范围管理全部研发任务，拖动卡片即可更新进度。</p></div>
+              <div><span class="section-kicker dark">DELIVERY BOARD</span><p>以版本为范围管理研发、运营和故障任务，拖动卡片即可更新进度。</p></div>
             </div>
             <section class="panel kanban-shell">
               <header class="kanban-toolbar">
@@ -379,6 +377,7 @@
         <form id="workflow-form">
           <div class="modal-body">
             <label><span class="field-label">所属版本</span><select id="workflow-milestone" required></select></label>
+            <fieldset class="workflow-template-field full-field"><legend class="field-label">工作流模板</legend><div class="workflow-template-options" id="workflow-template-options"></div></fieldset>
             <label class="full-field"><span class="field-label">需求标题</span><input id="workflow-title" required placeholder="一句话描述要实现的能力" /></label>
             <label class="full-field"><span class="field-label">需求内容</span><textarea id="workflow-requirement" rows="7" required placeholder="描述背景、目标、边界和验收标准"></textarea></label>
           </div>

@@ -14,8 +14,9 @@ import { runCaptured, runShellCaptured } from "./process";
 import { chat, runAgent } from "./providers";
 import { deleteSecretValue, migrateLegacySecretFile, providerApiKey, saveSecretValue, secretValueStatus } from "./secrets";
 import { currentUser } from "./session";
-import { AgentConfig, AgentToolPermission, AssigneeRole, DevelopmentMilestone, DevelopmentPerson, DevelopmentWorkflow, GroupChat, GroupChatActivity, PersonAgentProfile, ProductConfig, ProductDeployment, ProductEnvironment, ProjectConfig, TaskExecutionStage, TaskStatus, WorkflowStage, WorkflowTaskItem } from "./types";
+import { AgentConfig, AgentToolPermission, AssigneeRole, DevelopmentMilestone, DevelopmentPerson, DevelopmentWorkflow, GroupChat, GroupChatActivity, PersonAgentProfile, ProductConfig, ProductDeployment, ProductEnvironment, ProjectConfig, TaskStatus, WorkflowStage, WorkflowTaskItem, WorkflowTemplateId } from "./types";
 import { buildAgentTools, executeAgentTool } from "./workbench";
+import { nextWorkflowStage, WORKFLOW_TEMPLATE_CATALOG, WORKFLOW_TEMPLATE_IDS, workflowTaskRole, workflowTemplate } from "./workflow-templates";
 import { createMilestone, createWorkflow, loadMilestones, loadWorkflows, parseWorkflowTaskItems, saveWorkflow } from "./workflows";
 import { PRODUCT_NAME, PRODUCT_VERSION } from "./version";
 
@@ -116,7 +117,7 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
     return;
   }
   if (method === "GET" && url.pathname === "/api/workflows") {
-    sendJson(response, 200, { ok: true, milestones: loadMilestones(), workflows: loadWorkflows() });
+    sendJson(response, 200, { ok: true, milestones: loadMilestones(), workflows: loadWorkflows(), templates: WORKFLOW_TEMPLATE_CATALOG });
     return;
   }
   if (method === "GET" && url.pathname === "/api/content-items") {
@@ -417,6 +418,7 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
       providerId: milestone.providerId,
       title: requiredString(body.title, "title"),
       requirement: requiredString(body.requirement, "requirement"),
+      templateId: requiredEnum(body.templateId ?? "software_delivery", "templateId", WORKFLOW_TEMPLATE_IDS) as WorkflowTemplateId,
     });
     sendJson(response, 201, { ok: true, workflow });
     return;
@@ -461,9 +463,7 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
       const output = await chat(provider, {
         prompt: action === "plan" ? workflowPlanPrompt(workflow, product, version) : workflowTasksPrompt(workflow, product, version),
         model: modelId,
-        system: action === "plan"
-          ? "你是资深研发负责人。只输出可执行的研发计划，不编写代码，不虚构仓库事实。"
-          : "你是资深技术项目经理。把已确认的计划拆成有顺序、可验证、可独立完成的任务清单，不编写代码。",
+        system: action === "plan" ? workflowTemplate(workflow.templateId).planSystemPrompt : workflowTemplate(workflow.templateId).taskSystemPrompt,
       });
       workflow.providerId = providerId;
       if (action === "plan") {
@@ -473,7 +473,7 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
         workflow.stage = "plan";
       } else {
         workflow.tasks = output;
-        workflow.taskItems = parseWorkflowTaskItems(output);
+        workflow.taskItems = parseWorkflowTaskItems(output, workflow.templateId);
         workflow.stage = "tasks";
       }
       saveWorkflow(workflow);
@@ -491,7 +491,7 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
     const taskId = requiredString(body.taskId, "taskId");
     const task = workflow.taskItems?.find((item) => item.id === taskId);
     if (!task) throw new HttpError(404, `Unknown workflow task: ${taskId}`);
-    const expectedRole = roleForTaskStage(task.stage);
+    const expectedRole = workflowTaskRole(task.stage);
     const ownerId = typeof body.ownerId === "string" ? body.ownerId.trim() : "";
     const agentId = typeof body.agentId === "string" ? body.agentId.trim() : "";
     const owner = ownerId ? loadPeople().find((person) => person.id === ownerId) : undefined;
@@ -535,13 +535,7 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
     const body = await readJsonBody(request);
     const workflow = findWorkflow(requiredString(body.id, "id"));
     const target = requiredString(body.stage, "stage") as WorkflowStage;
-    const transitions: Partial<Record<WorkflowStage, WorkflowStage>> = {
-      tasks: "coding",
-      coding: "deployment",
-      deployment: "testing",
-      testing: "release",
-    };
-    if (transitions[workflow.stage] !== target) {
+    if (nextWorkflowStage(workflow.templateId, workflow.stage) !== target) {
       throw new HttpError(409, `Cannot move workflow from ${workflow.stage} to ${target}.`);
     }
     workflow.stage = target;
@@ -901,6 +895,7 @@ function findWorkflow(id: string): DevelopmentWorkflow {
 }
 
 function workflowPlanPrompt(workflow: DevelopmentWorkflow, product: ProductConfig, version: DevelopmentMilestone): string {
+  const template = workflowTemplate(workflow.templateId);
   return [
     `产品：${product.name}`,
     `版本：${version.title}`,
@@ -910,12 +905,14 @@ function workflowPlanPrompt(workflow: DevelopmentWorkflow, product: ProductConfi
     "需求内容：",
     workflow.requirement,
     "",
-    "请输出中文 Markdown 计划，必须覆盖：目标与非目标、影响范围、技术方案、实施步骤、风险与回滚、部署方案、测试方案。",
-    "研发阶段顺序固定为：需求 → 计划 → 任务 → 编码 → 部署 → 测试 → 发布。不要编写代码。",
+    `工作流模板：${template.name}`,
+    `请输出中文 Markdown 计划，必须覆盖：${template.planChecklist}。`,
+    `阶段顺序固定为：${[template.intakeLabels.requirement, template.intakeLabels.plan, template.intakeLabels.tasks, ...template.stages.map((stage) => stage.label)].join(" → ")}。不要直接执行任务。`,
   ].join("\n");
 }
 
 function workflowTasksPrompt(workflow: DevelopmentWorkflow, product: ProductConfig, version: DevelopmentMilestone): string {
+  const template = workflowTemplate(workflow.templateId);
   return [
     `产品：${product.name}`,
     `版本：${version.title}`,
@@ -928,29 +925,24 @@ function workflowTasksPrompt(workflow: DevelopmentWorkflow, product: ProductConf
     "已确认计划：",
     workflow.plan || "",
     "",
-    "请拆分为中文 Markdown 任务清单。每项使用“- [ ] [T编号] 标题”，并写明目标、涉及仓库、完成标准和验证方式。",
-    "任务必须按编码、部署、测试、发布四个阶段分组，依赖关系明确，粒度适合 Agent 逐项执行。不要编写代码。",
+    `工作流模板：${template.name}`,
+    "请拆分为中文 Markdown 任务清单。每项使用“- [ ] [T编号] 标题”，并写明目标、完成标准和验证方式。",
+    `任务必须严格按${template.stages.map((stage) => `${stage.label}（${assigneeRoleLabelForPrompt(stage.role)}）`).join("、")}分组，依赖关系明确，粒度适合 Agent 逐项执行。不要直接执行任务。`,
   ].join("\n");
-}
-
-function roleForTaskStage(stage: TaskExecutionStage): AssigneeRole {
-  const roles: Record<TaskExecutionStage, AssigneeRole> = {
-    coding: "developer",
-    deployment: "deployer",
-    testing: "tester",
-    release: "releaser",
-  };
-  return roles[stage];
 }
 
 function rolesRequiredByAssignedTasks(personId: string): Set<AssigneeRole> {
   const roles = new Set<AssigneeRole>();
   for (const workflow of loadWorkflows()) {
     for (const task of workflow.taskItems || []) {
-      if (task.ownerId === personId) roles.add(roleForTaskStage(task.stage));
+      if (task.ownerId === personId) roles.add(workflowTaskRole(task.stage));
     }
   }
   return roles;
+}
+
+function assigneeRoleLabelForPrompt(role: AssigneeRole): string {
+  return ({ developer: "开发", tester: "测试", deployer: "运维", releaser: "发布", operator: "运营" } as Record<AssigneeRole, string>)[role];
 }
 
 function normalizeProduct(value: unknown): ProductConfig {

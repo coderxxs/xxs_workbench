@@ -63,8 +63,12 @@ export interface AgentConfig {
   projects: Record<string, ProjectConfig>;
 }
 
-export type WorkflowStage = "requirement" | "plan" | "tasks" | "coding" | "deployment" | "testing" | "release";
-export type TaskExecutionStage = "coding" | "deployment" | "testing" | "release";
+export type WorkflowTemplateId = "software_delivery" | "content_operations" | "incident_response";
+export type TaskExecutionStage =
+  | "coding" | "deployment" | "testing" | "release"
+  | "topic_planning" | "content_creation" | "content_review" | "content_publishing" | "content_analysis"
+  | "incident_triage" | "incident_diagnosis" | "incident_fix" | "incident_verification" | "incident_review";
+export type WorkflowStage = "requirement" | "plan" | "tasks" | TaskExecutionStage;
 export type TaskStatus = "pending" | "in_progress" | "blocked" | "completed" | "failed";
 export type AssigneeRole = "developer" | "tester" | "deployer" | "releaser" | "operator";
 export type AgentToolPermission = "inspect_repositories" | "run_read_commands" | "run_write_commands" | "run_deploy_commands";
@@ -170,6 +174,7 @@ export interface DevelopmentWorkflow {
   plan?: string;
   tasks?: string;
   taskItems?: WorkflowTaskItem[];
+  templateId: WorkflowTemplateId;
   stage: WorkflowStage;
   createdAt: string;
   updatedAt: string;

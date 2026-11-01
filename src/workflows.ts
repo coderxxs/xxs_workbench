@@ -2,18 +2,18 @@ import path from "path";
 import { randomBytes } from "crypto";
 import { findAgentHome } from "./config";
 import { loadRecords, replaceRecords } from "./database";
-import { DevelopmentMilestone, DevelopmentWorkflow, TaskExecutionStage, WorkflowStage, WorkflowTaskItem } from "./types";
+import { DevelopmentMilestone, DevelopmentWorkflow, TaskExecutionStage, WorkflowStage, WorkflowTaskItem, WorkflowTemplateId } from "./types";
+import { WORKFLOW_EXECUTION_STAGES, WORKFLOW_STAGES, WORKFLOW_TEMPLATE_IDS, workflowTaskStageFromHeading, workflowTemplate } from "./workflow-templates";
 
 const WORKFLOW_FILE = "workflows.json";
 const MILESTONE_FILE = "milestones.json";
-const STAGES: WorkflowStage[] = ["requirement", "plan", "tasks", "coding", "deployment", "testing", "release"];
-
 export interface NewWorkflow {
   milestoneId: string;
   productId: string;
   providerId: string;
   title: string;
   requirement: string;
+  templateId?: WorkflowTemplateId;
 }
 
 export interface NewMilestone {
@@ -61,7 +61,8 @@ export function loadWorkflows(home = findAgentHome()): DevelopmentWorkflow[] {
   parsed.forEach(validateWorkflow);
   return parsed.map((workflow) => ({
     ...workflow,
-    taskItems: workflow.taskItems ?? (workflow.tasks ? parseWorkflowTaskItems(workflow.tasks) : undefined),
+    templateId: workflow.templateId ?? "software_delivery",
+    taskItems: workflow.taskItems ?? (workflow.tasks ? parseWorkflowTaskItems(workflow.tasks, workflow.templateId ?? "software_delivery") : undefined),
   }));
 }
 
@@ -75,6 +76,7 @@ export function createWorkflow(input: NewWorkflow, home = findAgentHome()): Deve
     providerId: input.providerId,
     title: input.title,
     requirement: input.requirement,
+    templateId: input.templateId ?? "software_delivery",
     stage: "requirement",
     createdAt: now,
     updatedAt: now,
@@ -105,14 +107,14 @@ export function writeMilestones(milestones: DevelopmentMilestone[], home = findA
   replaceRecords(home, "milestones", milestones);
 }
 
-export function parseWorkflowTaskItems(markdown: string): WorkflowTaskItem[] {
-  let stage: TaskExecutionStage = "coding";
+export function parseWorkflowTaskItems(markdown: string, templateId: WorkflowTemplateId = "software_delivery"): WorkflowTaskItem[] {
+  let stage: TaskExecutionStage = workflowTemplate(templateId).stages[0].id;
   const tasks: WorkflowTaskItem[] = [];
   const usedIds = new Set<string>();
 
   for (const line of markdown.split(/\r?\n/)) {
     const heading = line.match(/^\s*#{1,6}\s+(.+?)\s*$/);
-    if (heading) stage = taskStageFromHeading(heading[1]) ?? stage;
+    if (heading) stage = workflowTaskStageFromHeading(templateId, heading[1]) ?? stage;
 
     const item = line.match(/^\s*[-*]\s+\[([ xX])\]\s+(?:\[([^\]]+)\]\s*)?(.+?)\s*$/);
     if (!item) continue;
@@ -155,11 +157,14 @@ function validateWorkflow(value: unknown): void {
     typeof value.title !== "string" ||
     typeof value.requirement !== "string" ||
     typeof value.stage !== "string" ||
-    !STAGES.includes(value.stage as WorkflowStage) ||
+    !WORKFLOW_STAGES.includes(value.stage as WorkflowStage) ||
     typeof value.createdAt !== "string" ||
     typeof value.updatedAt !== "string"
   ) {
     throw new Error(`Invalid workflow: ${String(value.id || "unknown")}`);
+  }
+  if (value.templateId !== undefined && !WORKFLOW_TEMPLATE_IDS.includes(value.templateId)) {
+    throw new Error(`Invalid workflow template: ${String(value.templateId)}`);
   }
   if (value.taskItems !== undefined) {
     if (!Array.isArray(value.taskItems)) throw new Error(`Invalid workflow tasks: ${value.id}`);
@@ -172,22 +177,13 @@ function validateTaskItem(value: unknown): void {
   if (
     typeof value.id !== "string" ||
     typeof value.title !== "string" ||
-    !["coding", "deployment", "testing", "release"].includes(value.stage) ||
+    !WORKFLOW_EXECUTION_STAGES.includes(value.stage) ||
     !["pending", "in_progress", "blocked", "completed", "failed"].includes(value.status) ||
     (value.ownerId !== undefined && typeof value.ownerId !== "string") ||
     (value.agentId !== undefined && typeof value.agentId !== "string")
   ) {
     throw new Error(`Invalid workflow task: ${String(value.id || "unknown")}`);
   }
-}
-
-function taskStageFromHeading(heading: string): TaskExecutionStage | undefined {
-  const normalized = heading.toLowerCase();
-  if (/发布|release/.test(normalized)) return "release";
-  if (/测试|验收|test|qa/.test(normalized)) return "testing";
-  if (/部署|deploy/.test(normalized)) return "deployment";
-  if (/编码|开发|实现|coding|development|implementation/.test(normalized)) return "coding";
-  return undefined;
 }
 
 function uniqueTaskId(preferred: string, usedIds: Set<string>): string {

@@ -347,6 +347,18 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .workflow-flow span { display: inline-flex; align-items: center; gap: 7px; flex: 1 0 auto; color: #56616f; font-size: 11px; font-weight: 750; }
 .workflow-flow b { display: grid; place-items: center; width: 27px; height: 27px; color: var(--accent); background: #efedfd; border-radius: 8px; font-size: 9px; }
 .workflow-flow i { color: #b2b8c1; font-style: normal; }
+.workflow-template-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.workflow-template-summary { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); }
+.workflow-template-icon { display: grid; place-items: center; flex: 0 0 auto; width: 38px; height: 38px; color: #6254cf; background: #efedfd; border-radius: 11px; font-size: 11px; font-weight: 900; }
+.workflow-template-summary.mint .workflow-template-icon, .workflow-template-option.mint .workflow-template-icon { color: #087b65; background: #e1f6f0; }
+.workflow-template-summary.amber .workflow-template-icon, .workflow-template-option.amber .workflow-template-icon { color: #9a650f; background: #fbefd9; }
+.workflow-template-summary div { min-width: 0; }
+.workflow-template-summary strong, .workflow-template-summary small { display: block; }
+.workflow-template-summary strong { color: #283442; font-size: 12px; }
+.workflow-template-summary small { margin-top: 4px; color: #8c96a2; font-size: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.workflow-template-badge { display: inline-flex; margin-right: 7px; padding: 3px 6px; color: #6254cf; background: #efedfd; border-radius: 6px; font-size: 8px; font-weight: 850; }
+.workflow-template-badge.mint { color: #087b65; background: #e1f6f0; }
+.workflow-template-badge.amber { color: #9a650f; background: #fbefd9; }
 .workflow-list { display: grid; gap: 16px; }
 .version-card { overflow: hidden; }
 .version-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 22px; padding: 22px; }
@@ -386,6 +398,8 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .task-stage.testing { color: #166d5b; background: #e5f6f1; }
 .task-stage.deployment { color: #976313; background: #fbf0dd; }
 .task-stage.release { color: #a33e56; background: #fae9ed; }
+.task-stage.mint { color: #087b65; background: #e1f6f0; }
+.task-stage.amber { color: #9a650f; background: #fbefd9; }
 .task-copy { min-width: 0; }
 .task-copy strong, .task-copy small { display: block; }
 .task-copy strong { overflow: hidden; color: #34404d; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
@@ -398,6 +412,17 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .workflow-action-note { margin-right: auto; color: #8a939e; font-size: 10px; }
 .workflow-empty { padding: 48px 24px; text-align: center; }
 .workflow-empty-icon { display: grid; place-items: center; width: 52px; height: 52px; margin: 0 auto 14px; color: var(--accent); background: #efedfd; border-radius: 15px; font-size: 25px; }
+.workflow-template-field { min-width: 0; margin: 0; padding: 0; border: 0; }
+.workflow-template-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+.workflow-template-option { display: flex; align-items: flex-start; gap: 9px; min-width: 0; padding: 11px; color: inherit; background: #f8f9fa; border: 1px solid #dfe3e7; border-radius: 11px; text-align: left; cursor: pointer; }
+.workflow-template-option:hover { border-color: #aaa1e5; }
+.workflow-template-option.is-selected { background: #f2f0ff; border-color: #7a6de0; box-shadow: 0 0 0 3px rgba(102,87,217,.08); }
+.workflow-template-option .workflow-template-icon { width: 32px; height: 32px; border-radius: 9px; }
+.workflow-template-option > span:last-child { min-width: 0; }
+.workflow-template-option strong, .workflow-template-option small, .workflow-template-option em { display: block; }
+.workflow-template-option strong { color: #34404d; font-size: 10px; }
+.workflow-template-option small { min-height: 28px; margin-top: 3px; color: #8c95a0; font-size: 8px; line-height: 1.45; }
+.workflow-template-option em { margin-top: 6px; color: #6557cf; font-size: 8px; font-style: normal; font-weight: 750; }
 .workflow-empty h3 { margin: 0; }
 .workflow-empty p { margin: 8px auto 18px; color: var(--muted); font-size: 11px; }
 
@@ -1097,6 +1122,12 @@ html[data-theme="dark"] .product-empty-dimension { color: #8290a1; background: #
 html[data-theme="dark"] .workflow-flow { background: var(--surface); border-color: var(--line); }
 html[data-theme="dark"] .workflow-flow span { color: #aeb9c6; }
 html[data-theme="dark"] .workflow-flow b { color: #b2a8ff; background: #302b50; }
+html[data-theme="dark"] .workflow-template-summary { background: var(--surface); border-color: var(--line); }
+html[data-theme="dark"] .workflow-template-summary strong { color: #edf1f7; }
+html[data-theme="dark"] .workflow-template-summary small { color: #8190a1; }
+html[data-theme="dark"] .workflow-template-option { background: #151f2a; border-color: #303d4b; }
+html[data-theme="dark"] .workflow-template-option.is-selected { background: #292642; border-color: #8275dc; }
+html[data-theme="dark"] .workflow-template-option strong { color: #e2e7ee; }
 html[data-theme="dark"] .version-card-header h3 { color: #edf1f7; }
 html[data-theme="dark"] .version-summary small { color: #8190a1; }
 html[data-theme="dark"] .version-progress { background: #273341; }
@@ -1153,6 +1184,8 @@ html[data-theme="dark"] .task-stage { color: #b8afff; background: #302b50; }
 html[data-theme="dark"] .task-stage.testing { color: #78d9bf; background: #19382f; }
 html[data-theme="dark"] .task-stage.deployment { color: #e5b466; background: #3a2d1d; }
 html[data-theme="dark"] .task-stage.release { color: #ee9999; background: #402226; }
+html[data-theme="dark"] .task-stage.mint { color: #78d9bf; background: #19382f; }
+html[data-theme="dark"] .task-stage.amber { color: #e5b466; background: #3a2d1d; }
 html[data-theme="dark"] .workflow-empty-icon { color: #b2a8ff; background: #302b50; }
 html[data-theme="dark"] .kanban-toolbar { border-color: #2a3542; }
 html[data-theme="dark"] .kanban-filters select { color: #d9e0e9; background: #1b2633; border-color: #303d4b; }
@@ -1294,6 +1327,7 @@ html[data-theme="dark"] .signal { background: #1c2735; border-color: #46566a; }
   .people-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .content-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .agent-preset-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .workflow-template-options { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 860px) {
@@ -1329,6 +1363,7 @@ html[data-theme="dark"] .signal { background: #1c2735; border-color: #46566a; }
   .prompt-card { grid-column: 1 / -1; }
   .project-card-grid { grid-template-columns: 1fr; }
   .workflow-documents { grid-template-columns: 1fr; }
+  .workflow-template-strip { grid-template-columns: 1fr; }
   .workflow-task-row { grid-template-columns: 62px minmax(0, 1fr); }
   .task-assignment-field { grid-column: 1 / -1; }
   .product-body { grid-template-columns: 1fr; }

@@ -15,6 +15,7 @@ import { deleteSecretValue, legacySecretFilePath, migrateLegacySecretFile, parse
 import { currentUser } from "../src/session";
 import { buildAgentTools } from "../src/workbench";
 import { createMilestone, createWorkflow, loadMilestones, loadWorkflows, parseWorkflowTaskItems, saveWorkflow } from "../src/workflows";
+import { WORKFLOW_TEMPLATE_CATALOG, workflowStageSequence, workflowTaskRole } from "../src/workflow-templates";
 
 function test(name: string, operation: () => void): void {
   try {
@@ -150,6 +151,7 @@ try {
       requirement: "Export filtered audit records.",
     });
     assert.strictEqual(workflow.stage, "requirement");
+    assert.strictEqual(workflow.templateId, "software_delivery");
     workflow.plan = "1. Define the export contract.";
     workflow.stage = "plan";
     saveWorkflow(workflow);
@@ -412,6 +414,30 @@ try {
     assert.deepStrictEqual(tasks.map((item) => item.stage), ["coding", "deployment", "testing", "release"]);
     assert.strictEqual(tasks[2].status, "completed");
     assert.strictEqual(tasks[3].title, "发布正式版本");
+  });
+
+  test("provides workflow templates for development, operations and incidents", () => {
+    assert.deepStrictEqual(WORKFLOW_TEMPLATE_CATALOG.map((template) => template.id), ["software_delivery", "content_operations", "incident_response"]);
+    assert.deepStrictEqual(workflowStageSequence("content_operations"), ["requirement", "plan", "tasks", "topic_planning", "content_creation", "content_review", "content_publishing", "content_analysis"]);
+    assert.strictEqual(workflowTaskRole("content_creation"), "operator");
+    assert.strictEqual(workflowTaskRole("incident_fix"), "developer");
+  });
+
+  test("parses operations and incident tasks with template-specific stages", () => {
+    const operations = parseWorkflowTaskItems([
+      "## 选题", "- [ ] [O1] 确认受众", "## 创作", "- [ ] [O2] 撰写公众号文章", "## 审核", "- [ ] [O3] 校对品牌口径", "## 发布", "- [ ] [O4] 发布公众号", "## 复盘", "- [ ] [O5] 汇总阅读数据",
+    ].join("\n"), "content_operations");
+    assert.deepStrictEqual(operations.map((item) => item.stage), ["topic_planning", "content_creation", "content_review", "content_publishing", "content_analysis"]);
+    const incidents = parseWorkflowTaskItems([
+      "## 响应", "- [ ] [I1] 确认影响范围", "## 诊断", "- [ ] [I2] 检查服务日志", "## 修复", "- [ ] [I3] 回滚异常变更", "## 验证", "- [ ] [I4] 验证核心接口", "## 复盘", "- [ ] [I5] 补充改进项",
+    ].join("\n"), "incident_response");
+    assert.deepStrictEqual(incidents.map((item) => item.stage), ["incident_triage", "incident_diagnosis", "incident_fix", "incident_verification", "incident_review"]);
+  });
+
+  test("persists the selected workflow template", () => {
+    const milestone = loadMilestones()[0];
+    const workflow = createWorkflow({ milestoneId: milestone.id, productId: milestone.productId, providerId: milestone.providerId, title: "公众号发布", requirement: "完成新品公众号首发", templateId: "content_operations" });
+    assert.strictEqual(loadWorkflows().find((item) => item.id === workflow.id)?.templateId, "content_operations");
   });
 
   test("migrates the legacy secret file into SQLite without overriding the environment", () => {

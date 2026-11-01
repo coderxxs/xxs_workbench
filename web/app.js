@@ -5,6 +5,8 @@ const state = {
   runs: [],
   milestones: [],
   workflows: [],
+  workflowTemplates: [],
+  selectedWorkflowTemplateId: "software_delivery",
   people: [],
   skills: [],
   agentTools: [],
@@ -42,16 +44,6 @@ const viewMeta = {
   agent: ["AGENT CONSOLE", "Agent控制台"],
   runs: ["AUDIT", "运行记录"],
 };
-
-const workflowStages = [
-  ["requirement", "需求"],
-  ["plan", "计划"],
-  ["tasks", "任务"],
-  ["coding", "编码"],
-  ["deployment", "部署"],
-  ["testing", "测试"],
-  ["release", "发布"],
-];
 
 document.addEventListener("DOMContentLoaded", () => {
   initializeThemeToggle();
@@ -112,6 +104,7 @@ async function loadDashboard() {
     state.settings = settings;
     state.milestones = workflows.milestones || [];
     state.workflows = workflows.workflows || [];
+    state.workflowTemplates = workflows.templates || [];
     state.people = people.people || [];
     state.skills = people.skills || [];
     state.agentTools = people.tools || [];
@@ -135,6 +128,7 @@ function renderAll() {
   renderPeople();
   renderProjectCards();
   renderWorkflows();
+  renderWorkflowTemplateStrip();
   renderKanban();
   renderEnvironment();
   renderActivity();
@@ -389,6 +383,11 @@ function bindActions() {
     }
     const addMilestoneRequirement = event.target.closest("[data-milestone-add]");
     if (addMilestoneRequirement) openWorkflowModal(addMilestoneRequirement.dataset.milestoneAdd);
+    const workflowTemplateOption = event.target.closest("[data-workflow-template]");
+    if (workflowTemplateOption) {
+      state.selectedWorkflowTemplateId = workflowTemplateOption.dataset.workflowTemplate;
+      renderWorkflowTemplatePicker();
+    }
     const addPersonAgent = event.target.closest("[data-add-person-agent]");
     if (addPersonAgent) openPersonAgentModal(addPersonAgent.dataset.addPersonAgent);
     const editPersonAgent = event.target.closest("[data-edit-person-agent]");
@@ -616,6 +615,34 @@ function renderWorkflows() {
   target.innerHTML = state.milestones.map(renderVersionCard).join("");
 }
 
+function workflowTemplateById(templateId) {
+  return state.workflowTemplates.find((template) => template.id === templateId)
+    || state.workflowTemplates.find((template) => template.id === "software_delivery")
+    || { id: "software_delivery", name: "软件研发", shortName: "研发", description: "标准软件交付流程", icon: "</>", color: "violet", requiresRepository: true, intakeLabels: { requirement: "需求", plan: "方案", tasks: "任务" }, stages: [
+      { id: "coding", label: "编码", role: "developer" }, { id: "deployment", label: "部署", role: "deployer" }, { id: "testing", label: "测试", role: "tester" }, { id: "release", label: "发布", role: "releaser" },
+    ] };
+}
+
+function workflowStageEntries(workflow) {
+  const template = workflowTemplateById(workflow?.templateId);
+  return [
+    ["requirement", template.intakeLabels.requirement],
+    ["plan", template.intakeLabels.plan],
+    ["tasks", template.intakeLabels.tasks],
+    ...template.stages.map((stage) => [stage.id, stage.label]),
+  ];
+}
+
+function renderWorkflowTemplateStrip() {
+  const target = document.getElementById("workflow-template-strip");
+  if (!target) return;
+  target.innerHTML = state.workflowTemplates.map((template) => `
+    <article class="workflow-template-summary ${escapeAttr(template.color)}">
+      <span class="workflow-template-icon">${escapeHtml(template.icon)}</span>
+      <div><strong>${escapeHtml(template.name)}</strong><small>${escapeHtml(template.stages.map((stage) => stage.label).join(" → "))}</small></div>
+    </article>`).join("");
+}
+
 const kanbanColumns = [
   { status: "pending", label: "待办", hint: "尚未开始", tone: "pending" },
   { status: "in_progress", label: "进行中", hint: "正在处理", tone: "progress" },
@@ -673,7 +700,7 @@ function renderKanban() {
   document.getElementById("nav-kanban-count").textContent = String(allTasks.filter(({ task }) => normalizedTaskStatus(task.status) !== "completed").length);
   if (!state.kanbanProductId || !state.kanbanMilestoneId) {
     document.getElementById("kanban-summary").textContent = state.kanbanProductId ? "请选择版本" : "请选择产品和版本";
-    document.getElementById("kanban-board").innerHTML = `<div class="kanban-scope-empty"><span>▦</span><h3>${state.kanbanProductId ? "请选择交付版本" : "先确定产品和版本"}</h3><p>${state.kanbanProductId ? "版本选择后，将显示该版本的全部研发任务。" : "看板以单个产品的单个版本为工作范围，避免不同交付批次的任务混在一起。"}</p></div>`;
+    document.getElementById("kanban-board").innerHTML = `<div class="kanban-scope-empty"><span>▦</span><h3>${state.kanbanProductId ? "请选择交付版本" : "先确定产品和版本"}</h3><p>${state.kanbanProductId ? "版本选择后，将显示该版本全部工作流任务。" : "看板以单个产品的单个版本为工作范围，避免不同交付批次的任务混在一起。"}</p></div>`;
     return;
   }
   const tasks = allTasks.filter(({ workflow, task }) => {
@@ -702,7 +729,7 @@ function renderKanbanCard({ workflow, task, milestone, product, owner }) {
   const agent = owner?.agents?.find((item) => item.id === task.agentId);
   return `
     <article class="kanban-card" draggable="true" data-kanban-card data-workflow-id="${escapeAttr(workflow.id)}" data-task-id="${escapeAttr(task.id)}">
-      <div class="kanban-card-meta"><span class="task-stage ${escapeAttr(task.stage)}">${escapeHtml(workflowStageLabel(task.stage))}</span><span>${escapeHtml(task.id)}</span></div>
+      <div class="kanban-card-meta"><span class="task-stage ${escapeAttr(workflowTemplateById(workflow.templateId).color)}">${escapeHtml(workflowStageLabel(task.stage, workflow))}</span><span>${escapeHtml(workflowTemplateById(workflow.templateId).shortName)} · ${escapeHtml(task.id)}</span></div>
       <h4>${escapeHtml(task.title)}</h4>
       <button class="kanban-requirement" type="button" data-kanban-open="${escapeAttr(workflow.id)}" title="查看需求">${escapeHtml(workflow.title)}</button>
       <div class="kanban-card-scope"><span>${escapeHtml(product?.name || workflow.productId)}</span><span>${escapeHtml(milestone?.title || "未归属版本")}</span></div>
@@ -785,8 +812,10 @@ function openKanbanWorkflow(workflowId) {
 function renderVersionCard(version) {
   const product = state.overview.products.find((item) => item.id === version.productId);
   const requirements = state.workflows.filter((workflow) => workflow.milestoneId === version.id);
-  const stageTotal = requirements.reduce((total, workflow) => total + Math.max(workflowStages.findIndex(([stage]) => stage === workflow.stage), 0), 0);
-  const progress = requirements.length ? Math.round((stageTotal / (requirements.length * (workflowStages.length - 1))) * 100) : 0;
+  const progress = requirements.length ? Math.round(requirements.reduce((total, workflow) => {
+    const stages = workflowStageEntries(workflow);
+    return total + (Math.max(stages.findIndex(([stage]) => stage === workflow.stage), 0) / (stages.length - 1));
+  }, 0) / requirements.length * 100) : 0;
   return `
     <section class="version-card panel">
       <header class="version-card-header">
@@ -803,8 +832,10 @@ function renderVersionCard(version) {
 
 function renderWorkflowCard(workflow) {
   const product = state.overview.products.find((item) => item.id === workflow.productId);
-  const stageIndex = Math.max(workflowStages.findIndex(([stage]) => stage === workflow.stage), 0);
-  const progress = workflowStages.map(([stage, label], index) => `
+  const template = workflowTemplateById(workflow.templateId);
+  const stages = workflowStageEntries(workflow);
+  const stageIndex = Math.max(stages.findIndex(([stage]) => stage === workflow.stage), 0);
+  const progress = stages.map(([stage, label], index) => `
     <span class="workflow-step ${index < stageIndex ? "is-complete" : ""} ${index === stageIndex ? "is-current" : ""}"><b>${index < stageIndex ? "✓" : String(index + 1).padStart(2, "0")}</b>${label}</span>
   `).join('<i class="workflow-step-arrow">→</i>');
   const documents = [
@@ -817,8 +848,8 @@ function renderWorkflowCard(workflow) {
   return `
     <article class="workflow-card" id="workflow-${escapeAttr(workflow.id)}">
       <header class="workflow-card-header">
-        <div><span class="panel-kicker">${escapeHtml(product?.name || workflow.productId)}</span><h3>${escapeHtml(workflow.title)}</h3><p>${escapeHtml(workflow.providerId)} · 更新于 ${escapeHtml(formatRelative(workflow.updatedAt))}</p></div>
-        <span class="badge neutral">${escapeHtml(workflowStageLabel(workflow.stage))}</span>
+        <div><span class="panel-kicker">${escapeHtml(product?.name || workflow.productId)}</span><h3>${escapeHtml(workflow.title)}</h3><p><span class="workflow-template-badge ${escapeAttr(template.color)}">${escapeHtml(template.name)}</span>${escapeHtml(workflow.providerId)} · 更新于 ${escapeHtml(formatRelative(workflow.updatedAt))}</p></div>
+        <span class="badge neutral">${escapeHtml(workflowStageLabel(workflow.stage, workflow))}</span>
       </header>
       <div class="workflow-progress">${progress}</div>
       <div class="workflow-documents">${documents}</div>
@@ -842,7 +873,7 @@ function renderWorkflowTaskBoard(workflow) {
           const ownerIsEligible = owner && eligiblePeople.some((person) => person.id === owner.id);
           return `
             <article class="workflow-task-row">
-              <span class="task-stage ${escapeAttr(task.stage)}">${escapeHtml(workflowStageLabel(task.stage))}</span>
+              <span class="task-stage ${escapeAttr(workflowTemplateById(workflow.templateId).color)}">${escapeHtml(workflowStageLabel(task.stage, workflow))}</span>
               <div class="task-copy"><strong>${escapeHtml(task.title)}</strong><small>${escapeHtml(task.id)} · ${escapeHtml(taskStatusLabel(task.status))}</small></div>
               <label class="task-assignment-field"><span>负责人</span><select data-task-owner data-workflow-id="${escapeAttr(workflow.id)}" data-task-id="${escapeAttr(task.id)}" aria-label="为任务 ${escapeAttr(task.title)} 选择负责人">
                 <option value="" ${task.ownerId ? "" : "selected"}>未分配${eligiblePeople.length ? "" : `（需配置${assigneeRoleLabel(role)} Agent）`}</option>
@@ -866,27 +897,30 @@ function renderWorkflowAction(workflow, product) {
   if (workflow.stage === "plan") {
     return `<button class="primary-button" data-workflow-generate="tasks" data-workflow-id="${escapeAttr(workflow.id)}">AI 拆分任务 →</button>`;
   }
+  const template = workflowTemplateById(workflow.templateId);
   const hasRepository = Boolean(product?.repositoryDetails?.length);
-  if (!hasRepository) {
-    return `<span class="workflow-action-note">编码、部署和测试需要代码仓库</span><button class="primary-button" data-workflow-config="${escapeAttr(workflow.productId)}">去关联仓库 →</button>`;
+  if (template.requiresRepository && !hasRepository) {
+    return `<span class="workflow-action-note">${escapeHtml(template.name)}流程需要先关联代码仓库</span><button class="primary-button" data-workflow-config="${escapeAttr(workflow.productId)}">去关联仓库 →</button>`;
   }
-  if (workflow.stage === "tasks") {
-    return `<button class="primary-button" data-workflow-stage="coding" data-workflow-id="${escapeAttr(workflow.id)}">开始编码 →</button>`;
-  }
-  if (workflow.stage === "coding") {
-    return `<button class="secondary-button" data-workflow-agent="coding" data-workflow-id="${escapeAttr(workflow.id)}">继续 Agent 编码</button><button class="primary-button" data-workflow-stage="deployment" data-workflow-id="${escapeAttr(workflow.id)}">编码完成，进入部署 →</button>`;
-  }
-  if (workflow.stage === "deployment") {
-    return `<button class="secondary-button" data-workflow-agent="deployment" data-workflow-id="${escapeAttr(workflow.id)}">交给 Agent 部署</button><button class="primary-button" data-workflow-stage="testing" data-workflow-id="${escapeAttr(workflow.id)}">部署完成，进入测试 →</button>`;
-  }
-  if (workflow.stage === "testing") {
-    return `<button class="secondary-button" data-workflow-agent="testing" data-workflow-id="${escapeAttr(workflow.id)}">交给 Agent 测试</button><button class="primary-button" data-workflow-stage="release" data-workflow-id="${escapeAttr(workflow.id)}">测试完成，进入发布 →</button>`;
-  }
-  return `<button class="primary-button" data-workflow-agent="release" data-workflow-id="${escapeAttr(workflow.id)}">交给 Agent 发布 →</button>`;
+  const stages = workflowStageEntries(workflow);
+  const index = stages.findIndex(([stage]) => stage === workflow.stage);
+  const next = stages[index + 1];
+  const isExecutionStage = template.stages.some((stage) => stage.id === workflow.stage);
+  const agentButton = isExecutionStage && template.requiresRepository
+    ? `<button class="secondary-button" data-workflow-agent="${escapeAttr(workflow.stage)}" data-workflow-id="${escapeAttr(workflow.id)}">交给 Agent ${escapeHtml(workflowStageLabel(workflow.stage, workflow))}</button>`
+    : "";
+  if (!next) return `<span class="workflow-action-note">已进入最后阶段，请在看板完成剩余任务</span>${agentButton}`;
+  const prefix = workflow.stage === "tasks" ? "开始" : `${workflowStageLabel(workflow.stage, workflow)}完成，进入`;
+  return `${agentButton}<button class="primary-button" data-workflow-stage="${escapeAttr(next[0])}" data-workflow-id="${escapeAttr(workflow.id)}">${escapeHtml(prefix + next[1])} →</button>`;
 }
 
-function workflowStageLabel(stage) {
-  return workflowStages.find(([value]) => value === stage)?.[1] || stage;
+function workflowStageLabel(stage, workflow) {
+  if (workflow) return workflowStageEntries(workflow).find(([value]) => value === stage)?.[1] || stage;
+  for (const template of state.workflowTemplates) {
+    const found = template.stages.find((item) => item.id === stage);
+    if (found) return found.label;
+  }
+  return ({ requirement: "需求", plan: "计划", tasks: "任务" })[stage] || stage;
 }
 
 function assigneeRoleLabel(role) {
@@ -894,7 +928,11 @@ function assigneeRoleLabel(role) {
 }
 
 function taskRole(stage) {
-  return ({ coding: "developer", testing: "tester", deployment: "deployer", release: "releaser" })[stage] || "developer";
+  for (const template of state.workflowTemplates) {
+    const found = template.stages.find((item) => item.id === stage);
+    if (found) return found.role;
+  }
+  return "developer";
 }
 
 function taskStatusLabel(status) {
@@ -1934,10 +1972,22 @@ function openWorkflowModal(milestoneId) {
     return `<option value="${escapeAttr(version.id)}">${escapeHtml(version.title)} · ${escapeHtml(product?.name || version.productId)}</option>`;
   }).join("");
   if (milestoneId) milestoneSelect.value = milestoneId;
+  state.selectedWorkflowTemplateId = "software_delivery";
+  renderWorkflowTemplatePicker();
   document.getElementById("workflow-title").value = "";
   document.getElementById("workflow-requirement").value = "";
   document.getElementById("workflow-modal").hidden = false;
   setTimeout(() => document.getElementById("workflow-title").focus(), 50);
+}
+
+function renderWorkflowTemplatePicker() {
+  const target = document.getElementById("workflow-template-options");
+  if (!target) return;
+  target.innerHTML = state.workflowTemplates.map((template) => `
+    <button type="button" class="workflow-template-option ${escapeAttr(template.color)} ${template.id === state.selectedWorkflowTemplateId ? "is-selected" : ""}" data-workflow-template="${escapeAttr(template.id)}" aria-pressed="${template.id === state.selectedWorkflowTemplateId}">
+      <span class="workflow-template-icon">${escapeHtml(template.icon)}</span>
+      <span><strong>${escapeHtml(template.name)}</strong><small>${escapeHtml(template.description)}</small><em>${escapeHtml(template.stages.map((stage) => stage.label).join(" → "))}</em></span>
+    </button>`).join("");
 }
 
 function closeWorkflowModal() {
@@ -1954,6 +2004,7 @@ async function createDevelopmentWorkflow(event) {
       method: "POST",
       body: JSON.stringify({
         milestoneId: document.getElementById("workflow-milestone").value,
+        templateId: state.selectedWorkflowTemplateId,
         title: document.getElementById("workflow-title").value.trim(),
         requirement: document.getElementById("workflow-requirement").value.trim(),
       }),
@@ -1961,7 +2012,7 @@ async function createDevelopmentWorkflow(event) {
     closeWorkflowModal();
     await refreshWorkflows();
     switchView("workflow");
-    showToast("需求已进入研发工作流");
+    showToast(`需求已进入${workflowTemplateById(state.selectedWorkflowTemplateId).name}工作流`);
   } catch (error) {
     showToast(error.message, true);
   } finally {
@@ -1974,7 +2025,9 @@ async function refreshWorkflows() {
   const payload = await api("/api/workflows");
   state.milestones = payload.milestones || [];
   state.workflows = payload.workflows || [];
+  state.workflowTemplates = payload.templates || state.workflowTemplates;
   renderWorkflows();
+  renderWorkflowTemplateStrip();
   renderKanban();
   renderPeople();
   document.getElementById("nav-workflow-count").textContent = String(state.milestones.length);
@@ -2013,8 +2066,7 @@ async function advanceWorkflowStage(workflowId, stage, button) {
     renderWorkflows();
     renderKanban();
     renderPeople();
-    if (stage === "coding") openWorkflowInAgent(workflowId, "coding");
-    else showToast(`工作流已进入${workflowStageLabel(stage)}阶段`);
+    showToast(`工作流已进入${workflowStageLabel(stage, result.workflow)}阶段`);
   } catch (error) {
     button.disabled = false;
     showToast(error.message, true);
@@ -2026,7 +2078,8 @@ function openWorkflowInAgent(workflowId, mode) {
   if (!workflow) return;
   const version = state.milestones.find((item) => item.id === workflow.milestoneId);
   const product = state.overview.products.find((item) => item.id === workflow.productId);
-  if (!product?.repositoryDetails?.length) {
+  const template = workflowTemplateById(workflow.templateId);
+  if (template.requiresRepository && !product?.repositoryDetails?.length) {
     showToast("请先为产品关联代码仓库", true);
     switchView("projects");
     switchConfigSection("products");
@@ -2048,14 +2101,11 @@ function openWorkflowInAgent(workflowId, mode) {
 }
 
 function workflowAgentPrompt(workflow, product, version, mode) {
-  const instructions = {
-    coding: "请先检查关联仓库现状，再按任务清单逐项编码。每次修改后执行必要验证，并汇报实际变更与剩余任务。",
-    deployment: "请检查仓库中已登记的 deploy 命令和当前工作区状态，给出部署前检查。只有在我启用高风险命令后才执行部署，并报告真实输出。",
-    testing: "请根据需求、计划和任务运行相关测试，分析失败原因，并给出是否满足验收标准的结论。",
-    release: "请确认测试结果、版本号和工作区状态，检查已登记的 release 命令。只有在我启用高风险命令后才执行正式发布，并报告版本产物和真实输出。",
-  };
+  const template = workflowTemplateById(workflow.templateId);
+  const stage = template.stages.find((item) => item.id === mode);
   return [
-    `研发阶段：${workflowStageLabel(mode)}`,
+    `工作流：${template.name}`,
+    `当前阶段：${workflowStageLabel(mode, workflow)}`,
     `产品：${product.name}`,
     `版本：${version?.title || "未指定"}`,
     `版本目标：${version?.goal || "未填写"}`,
@@ -2070,7 +2120,7 @@ function workflowAgentPrompt(workflow, product, version, mode) {
     "任务：",
     workflow.tasks || "未拆分",
     "",
-    instructions[mode] || "请基于以上上下文继续处理。",
+    stage?.agentInstruction || "请基于以上上下文继续处理。",
   ].join("\n");
 }
 
