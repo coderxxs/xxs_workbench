@@ -485,9 +485,10 @@ button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-
 .group-chat-channel small { margin-top: 3px; color: #8b95a0; font-size: var(--type-caption); }
 .group-chat-channel b { min-width: 24px; padding: 3px 6px; color: #786cd1; background: white; border-radius: 999px; font-size: var(--type-caption); text-align: center; }
 .group-chat-room { min-width: 0; display: grid; grid-template-rows: auto minmax(320px, 1fr) auto; overflow: hidden; }
-.group-chat-header { display: flex; align-items: center; min-height: 42px; padding: 8px 14px; border-bottom: 1px solid var(--line); }
+.group-chat-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 42px; padding: 8px 14px; border-bottom: 1px solid var(--line); }
 .group-chat-header h3 { margin: 0; font-size: var(--type-small); line-height: 1.35; }
 .group-chat-header h3 span { color: var(--muted); font-weight: 550; }
+.group-chat-members-button { flex: 0 0 auto; padding: 6px 9px; font-size: var(--type-caption); }
 .group-chat-messages { display: flex; flex-direction: column; gap: 8px; min-height: 320px; max-height: calc(100vh - 360px); padding: 12px 14px; background: #fafbfc; overflow-y: auto; }
 .group-chat-message { display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: start; gap: 8px; }
 .group-chat-avatar { display: grid; place-items: center; width: 30px; height: 30px; color: #5143bd; background: #e9e6ff; border-radius: 9px; font-size: var(--type-caption); font-weight: 850; }

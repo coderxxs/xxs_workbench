@@ -7,7 +7,7 @@ import { configPath, detectProject, findAgentHome, initializeConfig, loadConfig,
 import { ContentUploadInput, deleteContentItem, findContentMedia, loadContentItems, saveContentItem } from "./content";
 import { hasStoredConfig } from "./database";
 import { listLocalDirectories, suggestRepositoryId } from "./directory-browser";
-import { createGroupChat, loadGroupChats, mentionedGroupChatMemberIds, postGroupChatMessage } from "./group-chats";
+import { createGroupChat, loadGroupChats, mentionedGroupChatMemberIds, postGroupChatMessage, updateGroupChat } from "./group-chats";
 import { isProviderModelOption, providerModelOptions } from "./model-catalog";
 import { consolidatePersonAgents, createPerson, deletePerson, ensurePersonAgentSkill, findPersonAgent, hasPersonAgentForRole, loadPeople, savePersonAgent, updatePerson } from "./people";
 import { runCaptured, runShellCaptured } from "./process";
@@ -322,12 +322,28 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
   if (method === "POST" && url.pathname === "/api/group-chats") {
     const body = await readJsonBody(request);
     const memberIds = requiredStringArray(body.memberIds, "memberIds");
-    if (memberIds.length < 2) throw new HttpError(400, "A group chat requires at least two members.");
+    if (memberIds.length < 1) throw new HttpError(400, "A group chat requires at least one employee member.");
     const peopleById = new Map(loadPeople().map((person) => [person.id, person]));
     const unknownMember = memberIds.find((id) => !peopleById.has(id));
     if (unknownMember) throw new HttpError(404, `Unknown group chat member: ${unknownMember}`);
     const groupChat = createGroupChat({ name: requiredString(body.name, "name"), memberIds });
     sendJson(response, 201, { ok: true, groupChat });
+    return;
+  }
+  if (method === "POST" && url.pathname === "/api/group-chats/update") {
+    const body = await readJsonBody(request);
+    const groupChatId = requiredIdentifier(body.id, "id");
+    const memberIds = requiredStringArray(body.memberIds, "memberIds");
+    if (memberIds.length < 1) throw new HttpError(400, "A group chat requires at least one employee member.");
+    const peopleById = new Map(loadPeople().map((person) => [person.id, person]));
+    const unknownMember = memberIds.find((id) => !peopleById.has(id));
+    if (unknownMember) throw new HttpError(404, `Unknown group chat member: ${unknownMember}`);
+    try {
+      const groupChat = updateGroupChat(groupChatId, { name: requiredString(body.name, "name"), memberIds });
+      sendJson(response, 200, { ok: true, groupChat });
+    } catch (error) {
+      throw new HttpError(messageOf(error).startsWith("Unknown group chat") ? 404 : 409, messageOf(error));
+    }
     return;
   }
   if (method === "POST" && url.pathname === "/api/group-chats/messages") {

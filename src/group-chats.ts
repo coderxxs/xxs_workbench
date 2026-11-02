@@ -51,6 +51,18 @@ export function createGroupChat(input: NewGroupChat, home = findAgentHome()): Gr
   return chat;
 }
 
+export function updateGroupChat(groupChatId: string, input: NewGroupChat, home = findAgentHome()): GroupChat {
+  const chats = loadGroupChats(home);
+  const chat = chats.find((item) => item.id === groupChatId);
+  if (!chat) throw new Error(`Unknown group chat: ${groupChatId}`);
+  chat.name = input.name;
+  chat.memberIds = unique(input.memberIds);
+  chat.updatedAt = new Date().toISOString();
+  validateGroupChat(chat);
+  writeGroupChats(chats, home);
+  return chat;
+}
+
 export function postGroupChatMessage(groupChatId: string, input: NewGroupChatMessage, home = findAgentHome()): GroupChat {
   const chats = loadGroupChats(home);
   const chat = chats.find((item) => item.id === groupChatId);
@@ -99,7 +111,7 @@ function validateGroupChat(value: unknown): void {
     typeof value.id !== "string" ||
     typeof value.name !== "string" ||
     !isStringArray(value.memberIds) ||
-    value.memberIds.length < 2 ||
+    value.memberIds.length < 1 ||
     !Array.isArray(value.messages) ||
     typeof value.createdAt !== "string" ||
     typeof value.updatedAt !== "string"

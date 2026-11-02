@@ -264,7 +264,7 @@ function bindActions() {
   document.getElementById("person-agent-form").addEventListener("change", (event) => {
     if (!event.target.closest("[data-agent-preset]")) clearAgentPresetSelection();
   });
-  document.getElementById("add-group-chat").addEventListener("click", openGroupChatModal);
+  document.getElementById("add-group-chat").addEventListener("click", () => openGroupChatModal());
   document.getElementById("group-chat-create-form").addEventListener("submit", createTeamGroupChat);
   document.getElementById("group-chat-modal-close").addEventListener("click", closeGroupChatModal);
   document.getElementById("group-chat-modal-cancel").addEventListener("click", closeGroupChatModal);
@@ -283,6 +283,10 @@ function bindActions() {
   document.getElementById("group-chat-list").addEventListener("click", (event) => {
     const target = event.target.closest("[data-group-chat-id]");
     if (target) selectGroupChat(target.dataset.groupChatId);
+  });
+  document.getElementById("group-chat-header").addEventListener("click", (event) => {
+    const target = event.target.closest("[data-edit-group-chat]");
+    if (target) openGroupChatModal(target.dataset.editGroupChat);
   });
   document.getElementById("group-chat-message").addEventListener("keydown", (event) => {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -1296,7 +1300,7 @@ function renderGroupChats() {
   }
 
   const members = chat.memberIds.map((id) => state.people.find((person) => person.id === id)).filter(Boolean);
-  header.innerHTML = `<h3>${escapeHtml(chat.name)}<span>（${members.length + 1}人）</span></h3>`;
+  header.innerHTML = `<h3>${escapeHtml(chat.name)}<span>（${members.length + 1}人）</span></h3><button type="button" class="secondary-button group-chat-members-button" data-edit-group-chat="${escapeAttr(chat.id)}">管理成员</button>`;
   messages.innerHTML = chat.messages.length
     ? chat.messages.map((message) => `
         <article class="group-chat-message ${escapeAttr(message.activity)} ${escapeAttr(message.senderType || "person")} ${message.clientPending ? "is-pending" : ""}">
@@ -1370,13 +1374,19 @@ function updateGroupChatComposer() {
   renderGroupChatTaskOptions();
 }
 
-function openGroupChatModal() {
-  if (state.people.length < 2) {
-    showToast("至少需要两名员工才能新建群聊", true);
+function openGroupChatModal(groupChatId) {
+  if (state.people.length < 1) {
+    showToast("至少需要一名员工才能新建群聊", true);
     return;
   }
-  document.getElementById("group-chat-name").value = "";
-  document.getElementById("group-chat-member-options").innerHTML = state.people.map((person) => capabilityOption(person.id, person.name, person.roles.map(assigneeRoleLabel).join(" · "), true)).join("");
+  const chat = groupChatId ? state.groupChats.find((item) => item.id === groupChatId) : undefined;
+  if (groupChatId && !chat) return;
+  document.getElementById("group-chat-id").value = chat?.id || "";
+  document.getElementById("group-chat-name").value = chat?.name || "";
+  document.getElementById("group-chat-modal-kicker").textContent = chat ? "EDIT GROUP CHAT" : "NEW GROUP CHAT";
+  document.getElementById("group-chat-modal-title").textContent = chat ? `管理 ${chat.name}` : "新建群聊";
+  document.getElementById("group-chat-create").textContent = chat ? "保存成员" : "创建群聊";
+  document.getElementById("group-chat-member-options").innerHTML = state.people.map((person) => capabilityOption(person.id, person.name, person.roles.map(assigneeRoleLabel).join(" · "), chat ? chat.memberIds.includes(person.id) : true)).join("");
   document.getElementById("group-chat-modal").hidden = false;
   setTimeout(() => document.getElementById("group-chat-name").focus(), 50);
 }
@@ -1388,29 +1398,32 @@ function closeGroupChatModal() {
 async function createTeamGroupChat(event) {
   event.preventDefault();
   const memberIds = checkedValues("group-chat-member-options");
-  if (memberIds.length < 2) {
-    showToast("群聊至少选择两名成员", true);
+  if (memberIds.length < 1) {
+    showToast("群聊至少保留一名员工", true);
     return;
   }
+  const groupChatId = document.getElementById("group-chat-id").value;
   const button = document.getElementById("group-chat-create");
   button.disabled = true;
-  button.textContent = "创建中…";
+  button.textContent = groupChatId ? "保存中…" : "创建中…";
   try {
-    const result = await api("/api/group-chats", {
+    const result = await api(groupChatId ? "/api/group-chats/update" : "/api/group-chats", {
       method: "POST",
-      body: JSON.stringify({ name: document.getElementById("group-chat-name").value.trim(), memberIds }),
+      body: JSON.stringify({ id: groupChatId || undefined, name: document.getElementById("group-chat-name").value.trim(), memberIds }),
     });
-    state.groupChats = [result.groupChat, ...state.groupChats];
+    state.groupChats = groupChatId
+      ? state.groupChats.map((chat) => chat.id === result.groupChat.id ? result.groupChat : chat)
+      : [result.groupChat, ...state.groupChats];
     state.activeGroupChatId = result.groupChat.id;
     document.getElementById("nav-group-chat-count").textContent = String(state.groupChats.length);
     renderGroupChats();
     closeGroupChatModal();
-    showToast(`群聊“${result.groupChat.name}”已创建`);
+    showToast(groupChatId ? `群聊“${result.groupChat.name}”成员已更新` : `群聊“${result.groupChat.name}”已创建`);
   } catch (error) {
     showToast(error.message, true);
   } finally {
     button.disabled = false;
-    button.textContent = "创建群聊";
+    button.textContent = groupChatId ? "保存成员" : "创建群聊";
   }
 }
 

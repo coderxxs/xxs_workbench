@@ -440,11 +440,12 @@
 
     <div class="modal-backdrop" id="group-chat-modal" hidden>
       <section class="modal workflow-modal" role="dialog" aria-modal="true" aria-labelledby="group-chat-modal-title">
-        <div class="modal-header"><div><span class="panel-kicker">NEW GROUP CHAT</span><h2 id="group-chat-modal-title">新建群聊</h2></div><button class="icon-button subtle" id="group-chat-modal-close" aria-label="关闭新建群聊">×</button></div>
+        <div class="modal-header"><div><span class="panel-kicker" id="group-chat-modal-kicker">NEW GROUP CHAT</span><h2 id="group-chat-modal-title">新建群聊</h2></div><button class="icon-button subtle" id="group-chat-modal-close" aria-label="关闭群聊配置">×</button></div>
         <form id="group-chat-create-form">
+          <input id="group-chat-id" type="hidden" />
           <div class="modal-body">
             <label><span class="field-label">群聊名称</span><input id="group-chat-name" required placeholder="例如 CSM 研发群" /></label>
-            <div class="full-field"><span class="field-label">群成员（至少两人）</span><div class="capability-grid compact" id="group-chat-member-options"></div></div>
+            <div class="full-field"><span class="field-label">群成员（至少一名员工，管理员默认在群内）</span><div class="capability-grid compact" id="group-chat-member-options"></div></div>
           </div>
           <div class="modal-footer"><button type="button" class="secondary-button" id="group-chat-modal-cancel">取消</button><button type="submit" class="primary-button" id="group-chat-create">创建群聊</button></div>
         </form>

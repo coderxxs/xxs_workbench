@@ -7,7 +7,7 @@ import { configPath, defaultConfig, detectProject, initializeConfig, loadConfig,
 import { contentMediaRoot, deleteContentItem, findContentMedia, loadContentItems, saveContentItem } from "../src/content";
 import { databasePath, databaseStats } from "../src/database";
 import { listLocalDirectories, suggestRepositoryId } from "../src/directory-browser";
-import { createGroupChat, loadGroupChats, mentionedGroupChatMemberIds, postGroupChatMessage } from "../src/group-chats";
+import { createGroupChat, loadGroupChats, mentionedGroupChatMemberIds, postGroupChatMessage, updateGroupChat } from "../src/group-chats";
 import { isProviderModelOption, providerModelOptions } from "../src/model-catalog";
 import { consolidatePersonAgents, createPerson, deletePerson, ensurePersonAgentSkill, hasPersonAgentForRole, loadPeople, peopleAgentArchivePath, peoplePath, savePersonAgent, updatePerson } from "../src/people";
 import { runShellCaptured } from "../src/process";
@@ -295,6 +295,11 @@ try {
       text: "@Developer 请确认实现范围",
     }, chatHome);
     assert.strictEqual(withAdministrator.messages[1].senderType, "administrator");
+
+    const edited = updateGroupChat(chat.id, { name: "Delivery Core Team", memberIds: ["person-test"] }, chatHome);
+    assert.strictEqual(edited.name, "Delivery Core Team");
+    assert.deepStrictEqual(edited.memberIds, ["person-test"]);
+    assert.strictEqual(edited.messages.length, 2);
   });
 
   test("persists content drafts and image media", () => {
