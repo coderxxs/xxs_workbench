@@ -20,12 +20,22 @@ export async function pickWindowsDirectory(initialPath?: string): Promise<string
     "$ErrorActionPreference = 'Stop'",
     "[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)",
     "Add-Type -AssemblyName System.Windows.Forms",
+    "Add-Type -AssemblyName System.Drawing",
+    "$owner = New-Object System.Windows.Forms.Form",
+    "$owner.ShowInTaskbar = $false",
+    "$owner.TopMost = $true",
+    "$owner.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedToolWindow",
+    "$owner.StartPosition = [System.Windows.Forms.FormStartPosition]::Manual",
+    "$owner.Location = New-Object System.Drawing.Point(-32000, -32000)",
+    "$owner.Size = New-Object System.Drawing.Size(1, 1)",
     "$dialog = New-Object System.Windows.Forms.FolderBrowserDialog",
     "$dialog.Description = '选择本地仓库目录'",
     "$dialog.ShowNewFolderButton = $true",
     `$initial = '${initial}'`,
     "if ($initial -and [IO.Directory]::Exists($initial)) { $dialog.SelectedPath = $initial }",
-    "try { if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::Write($dialog.SelectedPath) } } finally { $dialog.Dispose() }",
+    "$owner.Show()",
+    "$owner.Activate()",
+    "try { if ($dialog.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::Write($dialog.SelectedPath) } } finally { $dialog.Dispose(); $owner.Close(); $owner.Dispose() }",
   ].join("; ");
   const encoded = Buffer.from(script, "utf16le").toString("base64");
   const result = await runCaptured(powershell, ["-NoProfile", "-STA", "-EncodedCommand", encoded], process.cwd(), 10 * 60_000);
