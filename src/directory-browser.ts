@@ -20,22 +20,43 @@ export async function pickWindowsDirectory(initialPath?: string): Promise<string
     "$ErrorActionPreference = 'Stop'",
     "[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)",
     "Add-Type -AssemblyName System.Windows.Forms",
-    "Add-Type -AssemblyName System.Drawing",
-    "$owner = New-Object System.Windows.Forms.Form",
-    "$owner.ShowInTaskbar = $false",
-    "$owner.TopMost = $true",
-    "$owner.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedToolWindow",
-    "$owner.StartPosition = [System.Windows.Forms.FormStartPosition]::Manual",
-    "$owner.Location = New-Object System.Drawing.Point(-32000, -32000)",
-    "$owner.Size = New-Object System.Drawing.Size(1, 1)",
+    `Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class PickerFocus {
+  private delegate bool EnumWindowsProc(IntPtr handle, IntPtr parameter);
+  [DllImport("user32.dll")] private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr parameter);
+  [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr handle, out uint processId);
+  [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr handle);
+  [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr handle, int command);
+  [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr handle);
+  [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr handle, IntPtr insertAfter, int x, int y, int width, int height, uint flags);
+  public static bool BringToFront(uint targetProcessId) {
+    bool found = false;
+    EnumWindows((handle, parameter) => {
+      uint processId;
+      GetWindowThreadProcessId(handle, out processId);
+      if (processId != targetProcessId || !IsWindowVisible(handle)) return true;
+      ShowWindow(handle, 9);
+      SetWindowPos(handle, new IntPtr(-1), 0, 0, 0, 0, 0x0003);
+      SetForegroundWindow(handle);
+      found = true;
+      return false;
+    }, IntPtr.Zero);
+    return found;
+  }
+}
+'@`,
     "$dialog = New-Object System.Windows.Forms.FolderBrowserDialog",
     "$dialog.Description = '选择本地仓库目录'",
     "$dialog.ShowNewFolderButton = $true",
     `$initial = '${initial}'`,
     "if ($initial -and [IO.Directory]::Exists($initial)) { $dialog.SelectedPath = $initial }",
-    "$owner.Show()",
-    "$owner.Activate()",
-    "try { if ($dialog.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::Write($dialog.SelectedPath) } } finally { $dialog.Dispose(); $owner.Close(); $owner.Dispose() }",
+    "$focusTimer = New-Object System.Windows.Forms.Timer",
+    "$focusTimer.Interval = 200",
+    "$focusTimer.Add_Tick({ if ([PickerFocus]::BringToFront([uint32]$PID)) { $focusTimer.Stop() } })",
+    "$focusTimer.Start()",
+    "try { if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::Write($dialog.SelectedPath) } } finally { $focusTimer.Stop(); $focusTimer.Dispose(); $dialog.Dispose() }",
   ].join("; ");
   const encoded = Buffer.from(script, "utf16le").toString("base64");
   const result = await runCaptured(powershell, ["-NoProfile", "-STA", "-EncodedCommand", encoded], process.cwd(), 10 * 60_000);
