@@ -95,9 +95,14 @@ export interface PersonAgentProfile {
   updatedAt: string;
 }
 
+export type PersonGender = "male" | "female" | "other";
+
 export interface DevelopmentPerson {
   id: string;
   name: string;
+  age?: number;
+  gender?: PersonGender;
+  personality?: string;
   roles: AssigneeRole[];
   agents: PersonAgentProfile[];
   createdAt: string;

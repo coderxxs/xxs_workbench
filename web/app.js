@@ -584,13 +584,34 @@ function renderWorkstationZones(workstationInfo) {
 
 function renderPersonWorkstation(person, info) {
   const statusLabel = info.isBusy ? "忙碌" : "空闲";
+  const agent = person.agents?.[0];
+  const provider = agent ? (state.overview?.providers || []).find((item) => item.id === agent.providerId) : undefined;
+  const modelLabel = agent ? (provider?.modelName || provider?.model || "未设置") : "未配置 Agent";
+  const roleLabel = person.roles?.length ? person.roles.map(assigneeRoleLabel).join(" / ") : "未设置";
+  const activeTask = info.active?.[0]?.task?.title;
+  const profileId = `workstation-profile-${person.id}`;
   return `
-    <article class="workstation-card ${info.isBusy ? "is-busy" : "is-idle"}" aria-label="${escapeAttr(person.name)}，当前${statusLabel}">
+    <article class="workstation-card ${info.isBusy ? "is-busy" : "is-idle"}" tabindex="0" aria-label="${escapeAttr(person.name)}，当前${statusLabel}" aria-describedby="${escapeAttr(profileId)}">
       <div class="workstation-scene" role="img" aria-label="${escapeAttr(`${person.name}当前${statusLabel}，${info.isBusy ? "正在工位敲击键盘" : "趴在工位休息"}`)}">
         <span class="workstation-person-name">${escapeHtml(person.name)}</span>
         <span class="workstation-status"><i></i>${statusLabel}</span>
       </div>
+      <aside class="workstation-profile-popover" id="${escapeAttr(profileId)}">
+        <header><div><strong>${escapeHtml(person.name)}</strong><span>${escapeHtml(roleLabel)}</span></div><em class="${info.isBusy ? "is-busy" : ""}"><i></i>${statusLabel}</em></header>
+        <dl>
+          <div><dt>年龄</dt><dd>${person.age ? `${escapeHtml(person.age)} 岁` : "未设置"}</dd></div>
+          <div><dt>性别</dt><dd>${escapeHtml(personGenderLabel(person.gender))}</dd></div>
+          <div class="is-wide"><dt>性格</dt><dd title="${escapeAttr(person.personality || "未设置")}">${escapeHtml(person.personality || "未设置")}</dd></div>
+          <div class="is-wide"><dt>Agent</dt><dd title="${escapeAttr(agent?.name || "未配置")}">${escapeHtml(agent?.name || "未配置")}</dd></div>
+          <div class="is-wide"><dt>模型</dt><dd title="${escapeAttr(agent ? `${modelLabel} · ${agent.providerId}` : modelLabel)}">${escapeHtml(agent ? `${modelLabel} · ${agent.providerId}` : modelLabel)}</dd></div>
+          ${activeTask ? `<div class="is-wide"><dt>当前任务</dt><dd title="${escapeAttr(activeTask)}">${escapeHtml(activeTask)}</dd></div>` : ""}
+        </dl>
+      </aside>
     </article>`;
+}
+
+function personGenderLabel(gender) {
+  return ({ male: "男", female: "女", other: "其他" })[gender] || "未设置";
 }
 
 function renderPersonAgent(agent) {
@@ -1640,6 +1661,9 @@ function openPersonModal(personId) {
   const person = personId ? state.people.find((item) => item.id === personId) : undefined;
   document.getElementById("person-id").value = person?.id || "";
   document.getElementById("person-name").value = person?.name || "";
+  document.getElementById("person-age").value = person?.age || "";
+  document.getElementById("person-gender").value = person?.gender || "";
+  document.getElementById("person-personality").value = person?.personality || "";
   document.getElementById("person-modal-kicker").textContent = person ? "EDIT PERSON" : "NEW PERSON";
   document.getElementById("person-modal-title").textContent = person ? `编辑 ${person.name}` : "新建人员";
   document.getElementById("person-role-options").innerHTML = roleDefinitions().map((role, index) => capabilityOption(role.value, role.label, role.description, person ? person.roles.includes(role.value) : index === 0)).join("");
@@ -1664,6 +1688,9 @@ async function createDevelopmentPerson(event) {
       body: JSON.stringify({
         id: personId || undefined,
         name: document.getElementById("person-name").value.trim(),
+        age: document.getElementById("person-age").value ? Number(document.getElementById("person-age").value) : undefined,
+        gender: document.getElementById("person-gender").value || undefined,
+        personality: document.getElementById("person-personality").value.trim() || undefined,
         roles: checkedValues("person-role-options"),
       }),
     });

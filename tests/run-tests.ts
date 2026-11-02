@@ -368,8 +368,11 @@ try {
 
   test("updates people safely and deletes an unreferenced person", () => {
     const alice = loadPeople()[0];
-    const updated = updatePerson(alice.id, { name: "Alice Chen", roles: ["developer", "tester"] });
+    const updated = updatePerson(alice.id, { name: "Alice Chen", age: 29, gender: "female", personality: "冷静、细致", roles: ["developer", "tester"] });
     assert.strictEqual(updated.name, "Alice Chen");
+    assert.strictEqual(updated.age, 29);
+    assert.strictEqual(updated.gender, "female");
+    assert.strictEqual(updated.personality, "冷静、细致");
     assert.throws(
       () => updatePerson(alice.id, { name: "Alice Chen", roles: ["tester"] }),
       /still used by Agent/,

@@ -216,6 +216,9 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
     const body = await readJsonBody(request);
     const person = createPerson({
       name: requiredString(body.name, "name"),
+      age: optionalPersonAge(body.age),
+      gender: optionalEnum(body.gender, "gender", ["male", "female", "other"] as const),
+      personality: optionalString(body.personality, "personality", 40),
       roles: requiredRoleArray(body.roles, "roles"),
     });
     sendJson(response, 201, { ok: true, person });
@@ -229,7 +232,13 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
     const missingRole = Array.from(requiredRoles).find((role) => !roles.includes(role));
     if (missingRole) throw new HttpError(409, `Role ${missingRole} is still required by an assigned task.`);
     try {
-      const person = updatePerson(personId, { name: requiredString(body.name, "name"), roles });
+      const person = updatePerson(personId, {
+        name: requiredString(body.name, "name"),
+        age: optionalPersonAge(body.age),
+        gender: optionalEnum(body.gender, "gender", ["male", "female", "other"] as const),
+        personality: optionalString(body.personality, "personality", 40),
+        roles,
+      });
       sendJson(response, 200, { ok: true, person });
     } catch (error) {
       throw new HttpError(messageOf(error).startsWith("Unknown person") ? 404 : 409, messageOf(error));
@@ -1135,6 +1144,27 @@ function sendJson(response: ServerResponse, status: number, body: unknown): void
 function requiredString(value: unknown, name: string): string {
   if (typeof value !== "string" || !value.trim()) throw new HttpError(400, `${name} is required.`);
   return value.trim();
+}
+
+function optionalString(value: unknown, name: string, maxLength: number): string | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value !== "string") throw new HttpError(400, `${name} must be a string.`);
+  const result = value.trim();
+  if (!result) return undefined;
+  if (result.length > maxLength) throw new HttpError(400, `${name} must be at most ${maxLength} characters.`);
+  return result;
+}
+
+function optionalPersonAge(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  const result = typeof value === "number" ? value : Number(value);
+  if (!Number.isInteger(result) || result < 1 || result > 120) throw new HttpError(400, "age must be an integer between 1 and 120.");
+  return result;
+}
+
+function optionalEnum<T extends string>(value: unknown, name: string, allowed: readonly T[]): T | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  return requiredEnum(value, name, allowed);
 }
 
 function requiredStringArray(value: unknown, name: string): string[] {

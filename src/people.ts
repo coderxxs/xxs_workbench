@@ -4,7 +4,7 @@ import path from "path";
 import { randomBytes } from "crypto";
 import { findAgentHome } from "./config";
 import { loadRecords, replaceRecords } from "./database";
-import { AgentToolPermission, AssigneeRole, DevelopmentPerson, PersonAgentProfile } from "./types";
+import { AgentToolPermission, AssigneeRole, DevelopmentPerson, PersonAgentProfile, PersonGender } from "./types";
 
 const PEOPLE_FILE = "people.json";
 const PEOPLE_AGENT_ARCHIVE_FILE = "people-agent-archive.json";
@@ -13,6 +13,9 @@ const TOOLS: AgentToolPermission[] = ["inspect_repositories", "run_read_commands
 
 export interface NewPerson {
   name: string;
+  age?: number;
+  gender?: PersonGender;
+  personality?: string;
   roles: AssigneeRole[];
 }
 
@@ -47,6 +50,9 @@ export function createPerson(input: NewPerson, home = findAgentHome()): Developm
   const person: DevelopmentPerson = {
     id: `person-${Date.now().toString(36)}-${randomBytes(3).toString("hex")}`,
     name: input.name,
+    age: input.age,
+    gender: input.gender,
+    personality: input.personality,
     roles: unique(input.roles),
     agents: [],
     createdAt: now,
@@ -66,6 +72,9 @@ export function updatePerson(personId: string, input: NewPerson, home = findAgen
   const unsupportedAgent = person.agents.find((agent) => !roles.includes(agent.role));
   if (unsupportedAgent) throw new Error(`Role ${unsupportedAgent.role} is still used by Agent: ${unsupportedAgent.name}`);
   person.name = input.name;
+  person.age = input.age;
+  person.gender = input.gender;
+  person.personality = input.personality;
   person.roles = roles;
   person.updatedAt = new Date().toISOString();
   validatePerson(person);
@@ -183,6 +192,9 @@ function validatePerson(value: unknown): void {
   if (
     typeof value.id !== "string" ||
     typeof value.name !== "string" ||
+    (value.age !== undefined && (!Number.isInteger(value.age) || value.age < 1 || value.age > 120)) ||
+    (value.gender !== undefined && !["male", "female", "other"].includes(value.gender)) ||
+    (value.personality !== undefined && typeof value.personality !== "string") ||
     !Array.isArray(value.roles) ||
     !value.roles.length ||
     value.roles.some((role) => !ROLES.includes(role)) ||
