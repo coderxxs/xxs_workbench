@@ -59,17 +59,17 @@ npm run web
 
 管理台默认地址为 `http://127.0.0.1:4317`。服务只监听本机地址，不会向浏览器返回 API Key。可用 `DEV_AGENT_PORT` 修改端口。当前会话默认显示“小小生 / 本地管理员”；如需修改显示名称，可设置 `DEV_AGENT_USER_NAME`，其管理员角色和权限保持不变。
 
-## Linux 安装包
+## Windows ZIP 安装包
 
-构建 Linux x64 发行包：
+在 Windows x64 上构建发行包：
 
 ```powershell
-npm run package:linux
+npm run package
 ```
 
-产物位于 `release/xxs_workbench-1.0.0.0-linux-x64.tar.gz`。发行包内置经过 SHA-256 校验的 Node.js 24 LTS 和 Python 3.12 便携运行时，不要求服务器预装 Node/Python；发行包不包含 `.dev-agent`、SQLite 数据库或 API Key。解压后执行 `./install.sh` 完成离线安装，再运行安装目录中的 `start.sh`，详细说明见包内 `README-LINUX.md`。
+产物位于 `release/xxs_workbench-1.0.0.0-windows-x64.zip`，并同时生成 `.sha256` 校验文件。ZIP 内置构建机上的 Windows Node.js 和精简 Python 标准运行时，不要求部署机预装 Node/Python；发行包不包含 `.dev-agent`、SQLite 数据库、API Key 或现有业务数据。完整解压后双击 `start.cmd` 即可运行，数据默认写入解压目录的 `data/`。
 
-代码仓库从配置中心维护：进入“配置 → 配置产品”，选择本地仓库目录并点击“添加并关联”。同一个本地仓库可被多个产品关联，底层会按仓库 ID 去重。
+代码仓库从配置中心维护：进入“配置 → 配置产品”，直接选择当前 Windows 部署机上的本地仓库目录并点击“添加并关联”。系统不连接其他 Windows 电脑；同一个本地仓库可被多个产品关联，底层会按仓库 ID 去重。
 
 配置中心位于左侧菜单最后，分为“人员配置”“产品配置”和“模型配置”三个二级菜单。人员支持新建、编辑和受保护删除；如果人员或名下 Agent 仍被研发任务引用，删除会被拒绝。产品也支持安全删除：有关联版本、研发流程或 Agent 环境范围时会拒绝删除，删除产品不会删除全局登记的本地代码仓库。任务始终由已配置角色匹配 Agent 的人员负责，可以选择该 Agent 执行。Skills 只描述工作方法，Tools 决定可调用的本地能力，仓库和环境范围限制作用域；服务端会再次校验这些权限。通用 Agent 预设均包含“群聊协作”Skill，已有 Agent 会在服务启动时自动补齐该 Skill。管理员在群聊中输入 `@员工名` 后，系统会使用该员工 Agent 的 Provider 和群聊上下文生成回答；输入 `@所有人` 会依次请求群内全部员工 Agent 回答；未配置 Agent 的员工只能查看消息，不会自动回答。产品配置、人员与 Agent、研发流程、群聊消息、内容中心正文与元数据和运行审计统一保存在 `.dev-agent/dev-work-agent.sqlite`；内容图片保存在 `.dev-agent/media/`，SQLite 只保存图片元数据和关联关系。
 

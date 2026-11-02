@@ -14,8 +14,8 @@
     "web": "node dist/src/server.js",
     "web:dev": "npm run build && npm run web",
     "test": "npm run build && node dist/tests/run-tests.js",
-    "runtimes:linux": "node scripts/download-linux-runtimes.mjs",
-    "package:linux": "npm run build && npm run runtimes:linux && node scripts/build-linux-package.mjs"
+    "package": "npm run package:windows",
+    "package:windows": "npm run build && node scripts/build-windows-package.mjs"
   },
   "engines": {
     "node": ">=16.20"
