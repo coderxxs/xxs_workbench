@@ -183,11 +183,11 @@
 
           <section class="view" data-view="group-chat">
             <div class="group-chat-layout">
-              <aside class="panel group-chat-sidebar">
-                <div class="group-chat-sidebar-head"><div><span class="panel-kicker">CHANNELS</span><h3>群聊</h3></div><button class="secondary-button" id="add-group-chat" title="新建群聊">＋ 新建</button></div>
+              <nav class="group-chat-tabs" aria-label="群聊频道切换">
                 <div class="group-chat-list" id="group-chat-list"><div class="empty-state">尚未新建群聊</div></div>
-              </aside>
-              <section class="panel group-chat-room">
+                <button class="secondary-button group-chat-add-button" id="add-group-chat" title="新建群聊">＋ 新建</button>
+              </nav>
+              <section class="group-chat-room">
                 <header class="group-chat-header" id="group-chat-header"><h3>选择群聊</h3></header>
                 <div class="group-chat-messages" id="group-chat-messages"><div class="empty-state">暂无群聊消息</div></div>
                 <form class="group-chat-composer" id="group-chat-form" hidden>
