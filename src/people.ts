@@ -15,7 +15,7 @@ export interface NewPerson {
   name: string;
   age?: number;
   gender?: PersonGender;
-  personality?: string;
+  signature?: string;
   roles: AssigneeRole[];
 }
 
@@ -52,7 +52,7 @@ export function createPerson(input: NewPerson, home = findAgentHome()): Developm
     name: input.name,
     age: input.age,
     gender: input.gender,
-    personality: input.personality,
+    signature: input.signature,
     roles: unique(input.roles),
     agents: [],
     createdAt: now,
@@ -74,7 +74,8 @@ export function updatePerson(personId: string, input: NewPerson, home = findAgen
   person.name = input.name;
   person.age = input.age;
   person.gender = input.gender;
-  person.personality = input.personality;
+  person.signature = input.signature;
+  delete person.personality;
   person.roles = roles;
   person.updatedAt = new Date().toISOString();
   validatePerson(person);
@@ -194,6 +195,7 @@ function validatePerson(value: unknown): void {
     typeof value.name !== "string" ||
     (value.age !== undefined && (!Number.isInteger(value.age) || value.age < 1 || value.age > 120)) ||
     (value.gender !== undefined && !["male", "female", "other"].includes(value.gender)) ||
+    (value.signature !== undefined && typeof value.signature !== "string") ||
     (value.personality !== undefined && typeof value.personality !== "string") ||
     !Array.isArray(value.roles) ||
     !value.roles.length ||

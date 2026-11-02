@@ -218,7 +218,7 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
       name: requiredString(body.name, "name"),
       age: optionalPersonAge(body.age),
       gender: optionalEnum(body.gender, "gender", ["male", "female", "other"] as const),
-      personality: optionalString(body.personality, "personality", 40),
+      signature: optionalString(body.signature ?? body.personality, "signature", 60),
       roles: requiredRoleArray(body.roles, "roles"),
     });
     sendJson(response, 201, { ok: true, person });
@@ -236,7 +236,7 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
         name: requiredString(body.name, "name"),
         age: optionalPersonAge(body.age),
         gender: optionalEnum(body.gender, "gender", ["male", "female", "other"] as const),
-        personality: optionalString(body.personality, "personality", 40),
+        signature: optionalString(body.signature ?? body.personality, "signature", 60),
         roles,
       });
       sendJson(response, 200, { ok: true, person });

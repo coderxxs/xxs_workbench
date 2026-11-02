@@ -102,6 +102,8 @@ export interface DevelopmentPerson {
   name: string;
   age?: number;
   gender?: PersonGender;
+  signature?: string;
+  /** Legacy field kept readable so upgrades do not lose previously entered text. */
   personality?: string;
   roles: AssigneeRole[];
   agents: PersonAgentProfile[];

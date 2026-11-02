@@ -601,7 +601,7 @@ function renderPersonWorkstation(person, info) {
         <dl>
           <div><dt>年龄</dt><dd>${person.age ? `${escapeHtml(person.age)} 岁` : "未设置"}</dd></div>
           <div><dt>性别</dt><dd>${escapeHtml(personGenderLabel(person.gender))}</dd></div>
-          <div class="is-wide"><dt>性格</dt><dd title="${escapeAttr(person.personality || "未设置")}">${escapeHtml(person.personality || "未设置")}</dd></div>
+          <div class="is-wide"><dt>签名</dt><dd title="${escapeAttr(person.signature || person.personality || "未设置")}">${escapeHtml(person.signature || person.personality || "未设置")}</dd></div>
           <div class="is-wide"><dt>Agent</dt><dd title="${escapeAttr(agent?.name || "未配置")}">${escapeHtml(agent?.name || "未配置")}</dd></div>
           <div class="is-wide"><dt>模型</dt><dd title="${escapeAttr(agent ? `${modelLabel} · ${agent.providerId}` : modelLabel)}">${escapeHtml(agent ? `${modelLabel} · ${agent.providerId}` : modelLabel)}</dd></div>
           ${activeTask ? `<div class="is-wide"><dt>当前任务</dt><dd title="${escapeAttr(activeTask)}">${escapeHtml(activeTask)}</dd></div>` : ""}
@@ -1663,7 +1663,7 @@ function openPersonModal(personId) {
   document.getElementById("person-name").value = person?.name || "";
   document.getElementById("person-age").value = person?.age || "";
   document.getElementById("person-gender").value = person?.gender || "";
-  document.getElementById("person-personality").value = person?.personality || "";
+  document.getElementById("person-signature").value = person?.signature || person?.personality || "";
   document.getElementById("person-modal-kicker").textContent = person ? "EDIT PERSON" : "NEW PERSON";
   document.getElementById("person-modal-title").textContent = person ? `编辑 ${person.name}` : "新建人员";
   document.getElementById("person-role-options").innerHTML = roleDefinitions().map((role, index) => capabilityOption(role.value, role.label, role.description, person ? person.roles.includes(role.value) : index === 0)).join("");
@@ -1690,7 +1690,7 @@ async function createDevelopmentPerson(event) {
         name: document.getElementById("person-name").value.trim(),
         age: document.getElementById("person-age").value ? Number(document.getElementById("person-age").value) : undefined,
         gender: document.getElementById("person-gender").value || undefined,
-        personality: document.getElementById("person-personality").value.trim() || undefined,
+        signature: document.getElementById("person-signature").value.trim() || undefined,
         roles: checkedValues("person-role-options"),
       }),
     });
