@@ -96,10 +96,14 @@ try {
     fs.mkdirSync(projectDirectory);
     fs.writeFileSync(path.join(projectDirectory, "go.mod"), "module example.com/sample\n");
     config.projects.go = detectProject("go", projectDirectory);
+    const secondProjectDirectory = path.join(temporaryRoot, "sample-python");
+    fs.mkdirSync(secondProjectDirectory);
+    fs.writeFileSync(path.join(secondProjectDirectory, "requirements.txt"), "pytest\n");
+    config.projects.python = detectProject("python", secondProjectDirectory);
     config.products.ops = {
       id: "ops",
       name: "Ops Product",
-      repositories: ["go"],
+      repositories: ["go", "python"],
       environments: {
         test: { id: "test", name: "Test", kind: "test", status: "unknown" },
       },
@@ -110,7 +114,9 @@ try {
     writeConfig(config);
     const loaded = loadConfig();
     assert.strictEqual(loaded.projects.go.stack, "go");
+    assert.strictEqual(loaded.projects.python.stack, "python");
     assert.strictEqual(loaded.projects.go.commands.test.command, "go test ./...");
+    assert.deepStrictEqual(loaded.products.ops.repositories, ["go", "python"]);
     assert.strictEqual(loaded.products.ops.deployments[0].branch, "main");
   });
 

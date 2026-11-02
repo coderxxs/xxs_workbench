@@ -828,8 +828,21 @@ td code { color: #596574; font-size: 10px; }
 .directory-entry:hover { color: var(--accent); background: #f3f1ff; border-color: #d7d1f5; }
 .directory-icon { display: grid; place-items: center; width: 28px; height: 25px; color: #6657d9; background: #ebe8ff; border-radius: 7px; font-size: 15px; }
 .field-help { margin: 0 0 11px; color: #8b949f; font-size: 9px; line-height: 1.55; }
+.linked-repository-section { margin: 12px 0 16px; padding: 12px; background: #f7f8fb; border: 1px solid #e5e7ee; border-radius: 11px; }
+.linked-repository-head, .available-repository-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 9px; }
+.linked-repository-head strong, .available-repository-head strong { color: #3e4856; font-size: 10px; }
+.linked-repository-head span, .available-repository-head small { color: #8993a0; font-size: 9px; }
+.linked-repository-list { display: grid; gap: 7px; }
+.linked-repository-item { display: grid; grid-template-columns: 25px minmax(0, 1fr) auto auto; align-items: center; gap: 9px; padding: 9px 10px; background: white; border: 1px solid #dfe3e9; border-radius: 9px; }
+.linked-repository-index { display: grid; place-items: center; width: 23px; height: 23px; color: #6354d9; background: #ece9ff; border-radius: 7px; font-size: 9px; font-weight: 900; }
+.linked-repository-item strong, .linked-repository-item small { display: block; }
+.linked-repository-item strong { color: #34404e; font-size: 10px; }
+.linked-repository-item small { margin-top: 2px; color: #8d96a2; font-size: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.danger-text { color: #aa4f4f; }
+.product-empty-dimension.compact { padding: 12px; }
 .checkbox-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .repo-option { display: flex; align-items: flex-start; gap: 9px; padding: 11px; background: #f8f9fa; border: 1px solid #e6e9ec; border-radius: 9px; cursor: pointer; }
+.repo-option.is-linked { background: #f0edff; border-color: #d6d0fb; }
 .repo-option input { width: auto; margin-top: 2px; accent-color: var(--accent); }
 .repo-option strong, .repo-option small { display: block; }
 .repo-option strong { font-size: 10px; }
@@ -1119,6 +1132,12 @@ html[data-theme="dark"] :is(.repository-table-row, .deployment-edit-row) { backg
 html[data-theme="dark"] .deployment-edit-row:first-child { background: #1b2633; }
 html[data-theme="dark"] .deployment-section { background: #101821; }
 html[data-theme="dark"] .product-empty-dimension { color: #8290a1; background: #111a24; border-color: #344252; }
+html[data-theme="dark"] .linked-repository-section { background: #131d28; border-color: #303d4b; }
+html[data-theme="dark"] .linked-repository-item { background: #1b2633; border-color: #344252; }
+html[data-theme="dark"] .linked-repository-head strong,
+html[data-theme="dark"] .available-repository-head strong,
+html[data-theme="dark"] .linked-repository-item strong { color: #d9e0e9; }
+html[data-theme="dark"] .repo-option.is-linked { background: #272442; border-color: #5d55a7; }
 html[data-theme="dark"] .workflow-flow { background: var(--surface); border-color: var(--line); }
 html[data-theme="dark"] .workflow-flow span { color: #aeb9c6; }
 html[data-theme="dark"] .workflow-flow b { color: #b2a8ff; background: #302b50; }
@@ -1416,6 +1435,8 @@ html[data-theme="dark"] .signal { background: #1c2735; border-color: #46566a; }
   .repository-table-row > :last-child { display: none; }
   .repository-form, .form-grid.two-columns { grid-template-columns: 1fr; }
   .product-repository-add { grid-template-columns: 1fr; }
+  .linked-repository-item { grid-template-columns: 25px minmax(0, 1fr) auto; }
+  .linked-repository-item .badge { display: none; }
   .checkbox-grid { grid-template-columns: 1fr; }
   .capability-grid, .capability-grid.compact { grid-template-columns: 1fr; }
   .person-card-header { align-items: stretch; flex-direction: column; }

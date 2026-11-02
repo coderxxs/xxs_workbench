@@ -309,7 +309,7 @@
             <label class="full-field"><span>产品说明</span><textarea id="product-description" rows="2" placeholder="描述产品范围与职责"></textarea></label>
 
             <div class="editor-section">
-              <div class="editor-section-head"><div><span class="panel-kicker">REPOSITORIES</span><h3>产品代码仓库</h3></div><small>直接在当前产品中新增或关联本地仓库</small></div>
+              <div class="editor-section-head"><div><span class="panel-kicker">REPOSITORIES</span><h3>产品代码仓库</h3></div><small>一个产品可以关联多个本地仓库</small></div>
               <div class="product-repository-add">
                 <input id="product-repository-id" placeholder="仓库 ID，例如 csm-backend" aria-label="新仓库 ID" />
                 <div class="directory-field">
@@ -318,7 +318,12 @@
                 </div>
                 <button type="button" class="secondary-button" id="product-repository-add">添加并关联</button>
               </div>
-              <p class="field-help">添加后会自动识别技术栈、Git 分支和可用命令，并关联到当前产品。已有仓库可在下方直接勾选。</p>
+              <p class="field-help">每次选择一个目录并添加，成功后会立即出现在“已关联仓库”中；可继续选择目录添加更多仓库。</p>
+              <div class="linked-repository-section">
+                <div class="linked-repository-head"><strong>已关联仓库</strong><span id="product-linked-repository-count">0 个</span></div>
+                <div id="product-linked-repositories" class="linked-repository-list"></div>
+              </div>
+              <div class="available-repository-head"><strong>仓库登记表</strong><small>勾选已有仓库也可以关联到当前产品</small></div>
               <div id="product-repository-options" class="checkbox-grid"></div>
             </div>
 

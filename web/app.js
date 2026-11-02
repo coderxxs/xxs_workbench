@@ -369,6 +369,8 @@ function bindActions() {
     if (deleteProductButton) deleteProductConfiguration(deleteProductButton.dataset.deleteProduct, deleteProductButton);
     const removeEnvironment = event.target.closest("[data-remove-environment]");
     if (removeEnvironment) removeEnvironmentRow(removeEnvironment.dataset.removeEnvironment);
+    const unlinkRepository = event.target.closest("[data-unlink-product-repository]");
+    if (unlinkRepository) unlinkProductRepository(unlinkRepository.dataset.unlinkProductRepository);
     const generateWorkflow = event.target.closest("[data-workflow-generate]");
     if (generateWorkflow) generateWorkflowContent(generateWorkflow.dataset.workflowId, generateWorkflow.dataset.workflowGenerate, generateWorkflow);
     const advanceWorkflow = event.target.closest("[data-workflow-stage]");
@@ -2154,15 +2156,35 @@ function renderProductEditor() {
   document.getElementById("product-name").value = draft.name;
   document.getElementById("product-description").value = draft.description;
 
+  renderLinkedRepositories();
+
   const repositoryOptions = document.getElementById("product-repository-options");
   repositoryOptions.innerHTML = state.overview.repositories.length
     ? state.overview.repositories.map((repository) => `
-        <label class="repo-option"><input type="checkbox" value="${escapeAttr(repository.id)}" ${draft.repositories.includes(repository.id) ? "checked" : ""} /><span><strong>${escapeHtml(repository.id)}</strong><small title="${escapeAttr(repository.path)}">${escapeHtml(repository.path)}</small></span></label>
+        <label class="repo-option ${draft.repositories.includes(repository.id) ? "is-linked" : ""}"><input type="checkbox" value="${escapeAttr(repository.id)}" ${draft.repositories.includes(repository.id) ? "checked" : ""} /><span><strong>${escapeHtml(repository.id)}</strong><small title="${escapeAttr(repository.path)}">${escapeHtml(repository.path)}</small></span></label>
       `).join("")
     : '<div class="product-empty-dimension">还没有代码仓库，请使用上方“添加并关联”。</div>';
 
   renderEnvironmentEditor();
   renderDeploymentEditor();
+}
+
+function renderLinkedRepositories() {
+  const draft = state.productDraft;
+  if (!draft) return;
+  const repositoryMap = new Map(state.overview.repositories.map((repository) => [repository.id, repository]));
+  document.getElementById("product-linked-repository-count").textContent = `${draft.repositories.length} 个`;
+  document.getElementById("product-linked-repositories").innerHTML = draft.repositories.length
+    ? draft.repositories.map((repositoryId, index) => {
+        const repository = repositoryMap.get(repositoryId);
+        return `<article class="linked-repository-item">
+          <span class="linked-repository-index">${index + 1}</span>
+          <div><strong>${escapeHtml(repositoryId)}</strong><small title="${escapeAttr(repository?.path || "")}">${escapeHtml(repository?.path || "仓库信息加载中")}</small></div>
+          <span class="badge neutral">${escapeHtml(repository?.branch || repository?.stack || "已关联")}</span>
+          <button type="button" class="text-button danger-text" data-unlink-product-repository="${escapeAttr(repositoryId)}">解除关联</button>
+        </article>`;
+      }).join("")
+    : '<div class="product-empty-dimension compact">尚未关联仓库，请从本机目录添加，或在下方勾选已有仓库。</div>';
 }
 
 function renderEnvironmentEditor() {
@@ -2227,7 +2249,26 @@ function syncProductRepositories() {
   if (!draft) return;
   draft.repositories = Array.from(document.querySelectorAll("#product-repository-options input:checked")).map((input) => input.value);
   draft.deployments = draft.deployments.filter((deployment) => draft.repositories.includes(deployment.repositoryId));
+  document.querySelectorAll("#product-repository-options .repo-option").forEach((option) => {
+    option.classList.toggle("is-linked", option.querySelector("input")?.checked === true);
+  });
+  renderLinkedRepositories();
   renderDeploymentEditor();
+}
+
+function unlinkProductRepository(repositoryId) {
+  const draft = state.productDraft;
+  if (!draft) return;
+  draft.repositories = draft.repositories.filter((id) => id !== repositoryId);
+  draft.deployments = draft.deployments.filter((deployment) => deployment.repositoryId !== repositoryId);
+  const checkbox = Array.from(document.querySelectorAll("#product-repository-options input")).find((input) => input.value === repositoryId);
+  if (checkbox) {
+    checkbox.checked = false;
+    checkbox.closest(".repo-option")?.classList.remove("is-linked");
+  }
+  renderLinkedRepositories();
+  renderDeploymentEditor();
+  showToast(`已取消关联 ${repositoryId}，保存产品后生效`);
 }
 
 function syncEnvironmentDraft(event) {
@@ -2338,7 +2379,7 @@ async function registerProductRepository() {
     idInput.value = "";
     pathInput.value = "";
     renderProductEditor();
-    showToast(`${repositoryId} 已添加并关联当前产品`);
+    showToast(`${repositoryId} 已加入关联列表，可继续添加其他仓库`);
   } catch (error) {
     showToast(error.message, true);
   }
