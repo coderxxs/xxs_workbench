@@ -1,38 +1,6 @@
 import fs from "fs";
 import path from "path";
-
-export interface DirectoryEntry {
-  name: string;
-  path: string;
-}
-
-export interface DirectoryListing {
-  current?: string;
-  parent?: string;
-  entries: DirectoryEntry[];
-}
-
-export function listLocalDirectories(requestedPath?: string): DirectoryListing {
-  if (!requestedPath) return { entries: listRoots() };
-
-  const current = path.resolve(requestedPath);
-  if (!fs.existsSync(current) || !fs.statSync(current).isDirectory()) {
-    throw new Error("目录不存在或无法访问。");
-  }
-
-  const parentPath = path.dirname(current);
-  const entries = fs
-    .readdirSync(current, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => ({ name: entry.name, path: path.join(current, entry.name) }))
-    .sort((left, right) => left.name.localeCompare(right.name, "zh-CN", { numeric: true }));
-
-  return {
-    current,
-    parent: parentPath === current ? undefined : parentPath,
-    entries,
-  };
-}
+import { runCaptured } from "./process";
 
 export function suggestRepositoryId(name: string): string {
   return name
@@ -42,12 +10,28 @@ export function suggestRepositoryId(name: string): string {
     .toLowerCase();
 }
 
-function listRoots(): DirectoryEntry[] {
-  if (process.platform !== "win32") return [{ name: "/", path: "/" }];
-  const roots: DirectoryEntry[] = [];
-  for (let code = 65; code <= 90; code += 1) {
-    const root = `${String.fromCharCode(code)}:\\`;
-    if (fs.existsSync(root)) roots.push({ name: root, path: root });
-  }
-  return roots;
+export async function pickWindowsDirectory(initialPath?: string): Promise<string | undefined> {
+  if (process.platform !== "win32") throw new Error("Windows 原生目录选择器仅支持 Windows。");
+  const powershell = process.env.SystemRoot
+    ? path.join(process.env.SystemRoot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+    : "powershell.exe";
+  const initial = (initialPath || "").replace(/'/g, "''");
+  const script = [
+    "$ErrorActionPreference = 'Stop'",
+    "[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)",
+    "Add-Type -AssemblyName System.Windows.Forms",
+    "$dialog = New-Object System.Windows.Forms.FolderBrowserDialog",
+    "$dialog.Description = '选择本地仓库目录'",
+    "$dialog.ShowNewFolderButton = $true",
+    `$initial = '${initial}'`,
+    "if ($initial -and [IO.Directory]::Exists($initial)) { $dialog.SelectedPath = $initial }",
+    "try { if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::Write($dialog.SelectedPath) } } finally { $dialog.Dispose() }",
+  ].join("; ");
+  const encoded = Buffer.from(script, "utf16le").toString("base64");
+  const result = await runCaptured(powershell, ["-NoProfile", "-STA", "-EncodedCommand", encoded], process.cwd(), 10 * 60_000);
+  if (result.code !== 0) throw new Error(result.stderr.trim() || "无法打开 Windows 目录选择器。");
+  const selected = result.stdout.trim();
+  if (!selected) return undefined;
+  if (!fs.existsSync(selected) || !fs.statSync(selected).isDirectory()) throw new Error("选择的目录不存在或无法访问。");
+  return path.resolve(selected);
 }

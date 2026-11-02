@@ -6,7 +6,7 @@ import { AGENT_PRESET_CATALOG, SKILL_CATALOG, TOOL_CATALOG } from "../src/capabi
 import { configPath, defaultConfig, detectProject, initializeConfig, loadConfig, writeConfig } from "../src/config";
 import { contentMediaRoot, deleteContentItem, findContentMedia, loadContentItems, saveContentItem } from "../src/content";
 import { databasePath, databaseStats } from "../src/database";
-import { listLocalDirectories, suggestRepositoryId } from "../src/directory-browser";
+import { pickWindowsDirectory, suggestRepositoryId } from "../src/directory-browser";
 import { createGroupChat, loadGroupChats, mentionedGroupChatMemberIds, postGroupChatMessage } from "../src/group-chats";
 import { isProviderModelOption, providerModelOptions } from "../src/model-catalog";
 import { consolidatePersonAgents, createPerson, deletePerson, ensurePersonAgentSkill, hasPersonAgentForRole, loadPeople, peopleAgentArchivePath, peoplePath, savePersonAgent, updatePerson } from "../src/people";
@@ -131,14 +131,8 @@ try {
     assert.strictEqual(suggestRepositoryId("agent.api_v2"), "agent.api_v2");
   });
 
-  test("lists local child directories for the repository browser", () => {
-    const parent = path.join(temporaryRoot, "directory-browser");
-    fs.mkdirSync(path.join(parent, "service-2"), { recursive: true });
-    fs.mkdirSync(path.join(parent, "service-10"));
-    fs.writeFileSync(path.join(parent, "README.md"), "not a directory");
-    const listing = listLocalDirectories(parent);
-    assert.strictEqual(listing.current, path.resolve(parent));
-    assert.deepStrictEqual(listing.entries.map((entry) => entry.name), ["service-2", "service-10"]);
+  test("exposes the Windows native repository directory picker", () => {
+    assert.strictEqual(typeof pickWindowsDirectory, "function");
   });
 
   test("persists a product development workflow", () => {

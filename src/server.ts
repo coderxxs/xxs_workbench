@@ -1,12 +1,13 @@
 import fs from "fs";
 import http, { IncomingMessage, ServerResponse } from "http";
+import os from "os";
 import path from "path";
 import { audit, createRunId, readAudit } from "./audit";
 import { AGENT_PRESET_CATALOG, SKILL_CATALOG, skillInstruction, TOOL_CATALOG } from "./capabilities";
 import { configPath, detectProject, findAgentHome, initializeConfig, loadConfig, writeConfig } from "./config";
 import { ContentUploadInput, deleteContentItem, findContentMedia, loadContentItems, saveContentItem } from "./content";
 import { hasStoredConfig } from "./database";
-import { listLocalDirectories, suggestRepositoryId } from "./directory-browser";
+import { pickWindowsDirectory, suggestRepositoryId } from "./directory-browser";
 import { createGroupChat, loadGroupChats, mentionedGroupChatMemberIds, postGroupChatMessage } from "./group-chats";
 import { isProviderModelOption, providerModelOptions } from "./model-catalog";
 import { consolidatePersonAgents, createPerson, deletePerson, ensurePersonAgentSkill, findPersonAgent, hasPersonAgentForRole, loadPeople, savePersonAgent, updatePerson } from "./people";
@@ -201,14 +202,17 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
     });
     return;
   }
-  if (method === "POST" && url.pathname === "/api/directories") {
+  if (method === "POST" && url.pathname === "/api/directories/pick") {
+    if (!isRequestFromThisComputer(request)) {
+      throw new HttpError(403, "Windows 原生目录选择器只能从部署工作台的这台电脑打开。");
+    }
     const body = await readJsonBody(request);
-    const requestedPath = typeof body.path === "string" ? body.path.trim() : undefined;
-    const listing = listLocalDirectories(requestedPath || undefined);
+    const selected = await pickWindowsDirectory(typeof body.path === "string" ? body.path.trim() : undefined);
     sendJson(response, 200, {
       ok: true,
-      ...listing,
-      suggestedId: listing.current ? suggestRepositoryId(path.basename(listing.current)) : "",
+      cancelled: !selected,
+      path: selected,
+      suggestedId: selected ? suggestRepositoryId(path.basename(selected)) : "",
     });
     return;
   }
@@ -1058,6 +1062,18 @@ function validateWriteRequest(request: IncomingMessage): void {
   if (origin && new URL(origin).host !== request.headers.host) {
     throw new HttpError(403, "Cross-origin write requests are not allowed.");
   }
+}
+
+function isRequestFromThisComputer(request: IncomingMessage): boolean {
+  const remote = normalizeIpAddress(request.socket.remoteAddress || "");
+  if (remote === "127.0.0.1" || remote === "::1") return true;
+  return Object.values(os.networkInterfaces()).some((addresses) =>
+    (addresses || []).some((address) => normalizeIpAddress(address.address) === remote),
+  );
+}
+
+function normalizeIpAddress(value: string): string {
+  return value.replace(/^::ffff:/i, "").split("%")[0];
 }
 
 function readJsonBody(request: IncomingMessage, maxBytes = 1024 * 1024): Promise<Record<string, unknown>> {

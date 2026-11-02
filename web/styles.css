@@ -819,14 +819,6 @@ td code { color: #596574; font-size: 10px; }
 .product-repository-add { display: grid; grid-template-columns: minmax(170px, .45fr) minmax(280px, 1fr) auto; gap: 8px; margin-bottom: 7px; }
 .directory-field { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; min-width: 0; }
 .directory-picker-button { white-space: nowrap; }
-.modal.directory-modal { width: min(700px, 100%); }
-.directory-modal-body { display: grid; gap: 12px; min-height: 360px; }
-.directory-toolbar { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: center; }
-.directory-toolbar code { min-width: 0; padding: 10px 12px; color: #4b5664; background: #f5f6f8; border: 1px solid #e2e5e8; border-radius: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.directory-list { display: grid; align-content: start; gap: 7px; max-height: 430px; overflow-y: auto; }
-.directory-entry { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; color: #45515f; background: #f8f9fa; border: 1px solid #e6e9ec; border-radius: 9px; text-align: left; }
-.directory-entry:hover { color: var(--accent); background: #f3f1ff; border-color: #d7d1f5; }
-.directory-icon { display: grid; place-items: center; width: 28px; height: 25px; color: #6657d9; background: #ebe8ff; border-radius: 7px; font-size: 15px; }
 .field-help { margin: 0 0 11px; color: #8b949f; font-size: 9px; line-height: 1.55; }
 .linked-repository-section { margin: 12px 0 16px; padding: 12px; background: #f7f8fb; border: 1px solid #e5e7ee; border-radius: 11px; }
 .linked-repository-head, .available-repository-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 9px; }

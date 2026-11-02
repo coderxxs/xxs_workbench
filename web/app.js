@@ -25,7 +25,6 @@ const state = {
   settings: null,
   pendingCommand: null,
   productDraft: null,
-  directoryListing: null,
   activeView: "overview",
   activeConfigSection: "people",
   peopleViewMode: "workstation",
@@ -337,14 +336,6 @@ function bindActions() {
   document.getElementById("add-environment-row").addEventListener("click", addEnvironmentRow);
   document.getElementById("product-repository-add").addEventListener("click", registerProductRepository);
   document.getElementById("product-repository-browse").addEventListener("click", chooseRepositoryDirectory);
-  document.getElementById("directory-modal-close").addEventListener("click", closeDirectoryModal);
-  document.getElementById("directory-modal-cancel").addEventListener("click", closeDirectoryModal);
-  document.getElementById("directory-up").addEventListener("click", () => loadDirectory(state.directoryListing?.parent));
-  document.getElementById("directory-select-current").addEventListener("click", selectCurrentDirectory);
-  document.getElementById("directory-list").addEventListener("click", (event) => {
-    const target = event.target.closest("[data-directory-path]");
-    if (target) loadDirectory(target.dataset.directoryPath);
-  });
   document.getElementById("agent-prompt").addEventListener("keydown", (event) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
@@ -424,9 +415,6 @@ function bindActions() {
   document.getElementById("product-modal").addEventListener("click", (event) => {
     if (event.target.id === "product-modal") closeProductModal();
   });
-  document.getElementById("directory-modal").addEventListener("click", (event) => {
-    if (event.target.id === "directory-modal") closeDirectoryModal();
-  });
   document.getElementById("workflow-modal").addEventListener("click", (event) => {
     if (event.target.id === "workflow-modal") closeWorkflowModal();
   });
@@ -447,7 +435,6 @@ function bindActions() {
   });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !document.getElementById("command-modal").hidden) closeCommandModal();
-    if (event.key === "Escape" && !document.getElementById("directory-modal").hidden) closeDirectoryModal();
     if (event.key === "Escape" && !document.getElementById("workflow-modal").hidden) closeWorkflowModal();
     if (event.key === "Escape" && !document.getElementById("milestone-modal").hidden) closeMilestoneModal();
     if (event.key === "Escape" && !document.getElementById("person-modal").hidden) closePersonModal();
@@ -2387,53 +2374,26 @@ async function registerProductRepository() {
 
 async function chooseRepositoryDirectory() {
   const pathInput = document.getElementById("product-repository-path");
-  document.getElementById("directory-modal").hidden = false;
-  await loadDirectory(pathInput.value.trim() || undefined);
-}
-
-async function loadDirectory(directoryPath) {
-  const list = document.getElementById("directory-list");
-  const current = document.getElementById("directory-current");
-  const upButton = document.getElementById("directory-up");
-  const selectButton = document.getElementById("directory-select-current");
-  list.innerHTML = '<div class="empty-state">正在读取目录…</div>';
-  upButton.disabled = true;
-  selectButton.disabled = true;
-  try {
-    const payload = await api("/api/directories", {
-      method: "POST",
-      body: JSON.stringify({ path: directoryPath || undefined }),
-    });
-    state.directoryListing = payload;
-    current.textContent = payload.current || "选择磁盘";
-    current.title = payload.current || "本机磁盘";
-    upButton.disabled = !payload.current;
-    selectButton.disabled = !payload.current;
-    list.innerHTML = payload.entries.length
-      ? payload.entries.map((entry) => `<button type="button" class="directory-entry" data-directory-path="${escapeAttr(entry.path)}"><span class="directory-icon" aria-hidden="true">▱</span><span>${escapeHtml(entry.name)}</span><span aria-hidden="true">›</span></button>`).join("")
-      : '<div class="empty-state">当前目录没有子文件夹，可以直接选择此目录。</div>';
-  } catch (error) {
-    state.directoryListing = null;
-    current.textContent = "无法读取目录";
-    list.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
-    showToast(error.message, true);
-  }
-}
-
-function selectCurrentDirectory() {
-  const listing = state.directoryListing;
-  if (!listing?.current) return;
-  const pathInput = document.getElementById("product-repository-path");
   const idInput = document.getElementById("product-repository-id");
-  pathInput.value = listing.current;
-  if (!idInput.value.trim() && listing.suggestedId) idInput.value = listing.suggestedId;
-  closeDirectoryModal();
-  showToast(`已选择 ${listing.current}`);
-}
-
-function closeDirectoryModal() {
-  document.getElementById("directory-modal").hidden = true;
-  state.directoryListing = null;
+  const button = document.getElementById("product-repository-browse");
+  const original = button.textContent;
+  button.disabled = true;
+  button.textContent = "正在打开…";
+  try {
+    const payload = await api("/api/directories/pick", {
+      method: "POST",
+      body: JSON.stringify({ path: pathInput.value.trim() || undefined }),
+    });
+    if (payload.cancelled) return;
+    pathInput.value = payload.path;
+    if (!idInput.value.trim() && payload.suggestedId) idInput.value = payload.suggestedId;
+    showToast(`已选择 ${payload.path}`);
+  } catch (error) {
+    showToast(error.message, true);
+  } finally {
+    button.disabled = false;
+    button.textContent = original;
+  }
 }
 
 function environmentKindOptions(selected) {
