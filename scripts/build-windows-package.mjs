@@ -33,6 +33,8 @@ copyDirectory("web");
 fs.rmSync(path.join(stage, "dist", "tests"), { recursive: true, force: true });
 copyFile("README.md");
 copyFile("packaging/windows/start.cmd", "start.cmd");
+copyFile("packaging/windows/update.cmd", "update.cmd");
+copyFile("packaging/windows/update.ps1", "update.ps1");
 
 const runtimeRoot = path.join(stage, "runtime");
 const bundledNodeRoot = path.join(runtimeRoot, "node");
@@ -134,7 +136,15 @@ function windowsReadme(nodeVersion, pythonVersion) {
 
 安装包内置 Node.js ${nodeVersion} 和 ${pythonVersion}，不要求 Windows 预装 Node/Python。Git 状态与代码仓库功能仍需要系统安装 Git。
 
-程序数据保存在解压目录的 \`data\\dev-work-agent.sqlite\`，升级时保留 \`data\` 文件夹即可。发行包本身不包含 SQLite 数据库、API Key、产品、人员或历史消息。
+程序数据保存在解压目录的 \`data\\dev-work-agent.sqlite\`。发行包本身不包含 SQLite 数据库、API Key、产品、人员或历史消息。
+
+## 后续版本升级
+
+先停止旧版本，再在新版本解压目录运行：
+
+\`update.cmd D:\\software\\xxs_workbench-1.0.0.0-windows-x64\`
+
+升级脚本会先把目标 SQLite 备份到 \`data\\backups\`，然后只替换 \`dist\`、\`web\`、\`runtime\` 和程序文件，保留整个 \`data\`。新程序首次启动时会自动执行兼容的数据结构迁移。
 
 ## 代码仓库目录
 
